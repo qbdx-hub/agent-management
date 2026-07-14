@@ -7,8 +7,9 @@ export function setupGuards(router: Router) {
     const userStore = useUserStore()
     const wsStore = useWorkspaceStore()
 
-    // 1. 登录检查
-    if (to.path !== '/login' && !userStore.isLoggedIn) {
+    // 1. 登录检查（登录和注册页面不需要认证）
+    const publicPaths = ['/login', '/register']
+    if (!publicPaths.includes(to.path) && !userStore.isLoggedIn) {
       return next('/login')
     }
 
