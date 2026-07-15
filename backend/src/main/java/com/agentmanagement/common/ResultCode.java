@@ -27,7 +27,9 @@ public enum ResultCode {
     EMAIL_EXISTS(1007, "邮箱已被注册"),
 
     // ===== 业务错误 2xxx（后续模块扩展） =====
-    DATA_NOT_FOUND(2001, "数据不存在");
+    DATA_NOT_FOUND(2001, "数据不存在"),
+    KB_NAME_EXISTS(2002, "知识库名称已存在"),
+    KB_NOT_FOUND(2003, "知识库不存在");
 
     private final Integer code;
     private final String message;

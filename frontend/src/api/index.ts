@@ -12,11 +12,15 @@ const http = axios.create({
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   const workspaceId = localStorage.getItem('workspaceId')
+  const userName = localStorage.getItem('userName') || ''
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   if (workspaceId) {
     config.headers['X-Workspace-Id'] = workspaceId
+  }
+  if (userName) {
+    config.headers['X-User-Name'] = userName
   }
   return config
 })

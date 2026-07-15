@@ -64,6 +64,7 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/knowledge/KnowledgeList.vue'),
         meta: { title: '知识库', icon: 'Collection' },
       },
+      { path: 'knowledge/create', name: 'KnowledgeCreate', component: () => import('@/views/knowledge/KnowledgeCreate.vue'), meta: { title: '新建知识库', hidden: true } },
       { path: 'knowledge/:id', name: 'KnowledgeDetail', component: () => import('@/views/knowledge/KnowledgeDetail.vue'), meta: { title: '知识库详情', hidden: true } },
       // ===== 模块六：会话 =====
       { path: 'agents/:id/chat', name: 'SessionConsole', component: () => import('@/views/session/SessionConsole.vue'), meta: { title: '会话', hidden: true } },

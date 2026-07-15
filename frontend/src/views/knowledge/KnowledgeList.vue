@@ -1,54 +1,107 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDateTime } from '@/utils/format'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listKnowledgeBases, deleteKnowledgeBase } from '@/api/knowledge'
+import type { KnowledgeBase } from '@/api/knowledge'
 
 const router = useRouter()
-const knowledgeBases = ref([
-  { id: 1, name: 'Agent 业务知识库', description: 'Agent 相关业务文档和规范', documentCount: 12, vectorCount: 350, boundAgentCount: 2, status: 'active', updatedAt: '2026-07-12T10:00:00+08:00' },
-  { id: 2, name: '技术架构文档', description: '系统架构设计和技术选型文档', documentCount: 8, vectorCount: 210, boundAgentCount: 1, status: 'active', updatedAt: '2026-07-10T15:00:00+08:00' },
-  { id: 3, name: 'API 接口规范', description: 'RESTful API 设计规范和示例', documentCount: 15, vectorCount: 480, boundAgentCount: 3, status: 'active', updatedAt: '2026-07-11T09:00:00+08:00' },
-])
+const knowledgeBases = ref<KnowledgeBase[]>([])
+const loading = ref(false)
 
-const showCreate = ref(false)
-const newKB = ref({ name: '', description: '' })
+async function loadList() {
+  loading.value = true
+  try {
+    const res = await listKnowledgeBases()
+    if (res.code === 0) {
+      knowledgeBases.value = res.data || []
+    }
+  } catch (err: any) {
+    ElMessage.error(err?.message || '加载知识库列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadList()
+})
 
 function handleCreate() {
-  if (!newKB.value.name) return
-  knowledgeBases.value.push({ id: Date.now(), ...newKB.value, documentCount: 0, vectorCount: 0, boundAgentCount: 0, status: 'active', updatedAt: new Date().toISOString() })
-  showCreate.value = false
-  newKB.value = { name: '', description: '' }
+  router.push('/knowledge/create')
+}
+
+function goToDetail(id: number) {
+  router.push(`/knowledge/${id}`)
+}
+
+async function handleDelete(kb: KnowledgeBase, event: Event) {
+  // 阻止卡片点击事件
+  event.stopPropagation()
+
+  try {
+    await ElMessageBox.confirm(
+      `确定删除知识库"${kb.name}"吗？删除后将同时清除所有关联文档，且不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    const res = await deleteKnowledgeBase(kb.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      knowledgeBases.value = knowledgeBases.value.filter(item => item.id !== kb.id)
+    }
+  } catch (err: any) {
+    ElMessage.error(err?.message || '删除失败')
+  }
 }
 </script>
 
 <template>
-  <div class="knowledge-list-page">
+  <div class="knowledge-list-page" v-loading="loading">
     <div class="page-header">
       <h2>知识库</h2>
-      <el-button type="primary" @click="showCreate = true"><el-icon><Plus /></el-icon> 创建知识库</el-button>
+      <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon> 创建知识库</el-button>
     </div>
     <div class="card-grid">
-      <el-card v-for="kb in knowledgeBases" :key="kb.id" shadow="hover" class="kb-card" @click="router.push(`/knowledge/${kb.id}`)">
+      <el-card
+        v-for="kb in knowledgeBases"
+        :key="kb.id"
+        shadow="hover"
+        class="kb-card"
+        @click="goToDetail(kb.id)"
+      >
         <div class="kb-header">
           <span class="kb-icon">📚</span>
-          <div><div class="kb-name">{{ kb.name }}</div><div class="text-muted" style="font-size:12px">{{ kb.description }}</div></div>
+          <div style="flex:1">
+            <div class="kb-name">{{ kb.name }}</div>
+            <div class="text-muted" style="font-size:12px">{{ kb.description || '暂无描述' }}</div>
+          </div>
+          <el-button
+            type="danger"
+            text
+            size="small"
+            @click="handleDelete(kb, $event)"
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         <div class="kb-meta">
           <span>📄 {{ kb.documentCount }} 文档</span>
-          <span>🔢 {{ kb.vectorCount }} 向量</span>
-          <span>🤖 {{ kb.boundAgentCount }} Agent</span>
+          <span>🔢 {{ kb.totalTokens }} Token</span>
+          <el-tag :type="kb.status === 'active' ? 'success' : kb.status === 'building' ? 'warning' : 'danger'" size="small">
+            {{ kb.status === 'active' ? '正常' : kb.status === 'building' ? '构建中' : '异常' }}
+          </el-tag>
         </div>
         <div class="text-muted" style="font-size:12px;margin-top:8px">更新于 {{ formatDateTime(kb.updatedAt) }}</div>
       </el-card>
     </div>
-
-    <el-dialog v-model="showCreate" title="创建知识库" width="450px">
-      <el-form label-width="80px">
-        <el-form-item label="名称"><el-input v-model="newKB.name" placeholder="例如：业务知识库" /></el-form-item>
-        <el-form-item label="描述"><el-input v-model="newKB.description" type="textarea" :rows="2" /></el-form-item>
-      </el-form>
-      <template #footer><el-button @click="showCreate = false">取消</el-button><el-button type="primary" @click="handleCreate">创建</el-button></template>
-    </el-dialog>
+    <el-empty v-if="!loading && knowledgeBases.length === 0" description="暂无知识库，点击上方按钮创建" />
   </div>
 </template>
 
@@ -59,5 +112,5 @@ function handleCreate() {
 .kb-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .kb-icon { font-size: 28px; }
 .kb-name { font-weight: 600; font-size: 15px; }
-.kb-meta { display: flex; gap: 16px; font-size: 12px; color: #909399; }
+.kb-meta { display: flex; gap: 16px; font-size: 12px; color: #909399; align-items: center; }
 </style>
