@@ -30,12 +30,20 @@ public enum ResultCode {
 
     // ===== 业务错误 2xxx（后续模块扩展） =====
     DATA_NOT_FOUND(2001, "数据不存在"),
+
+    // ----- 知识库模块 -----
+    KB_NAME_EXISTS(2002, "知识库名称已存在"),
+    KB_NOT_FOUND(2003, "知识库不存在"),
+
+    // ----- Agent 模块(21xx) -----
     /** Agent 不存在或不属于当前工作空间 */
-    AGENT_NOT_FOUND(2002, "Agent不存在"),
-    /** 工具不存在或不属于当前工作空间 */
-    TOOL_NOT_FOUND(2003, "工具不存在"),
+    AGENT_NOT_FOUND(2101, "Agent不存在"),
     /** Agent 状态值非法（不在 draft/testing/published/paused/archived 范围内） */
-    AGENT_STATUS_INVALID(2004, "Agent状态非法");
+    AGENT_STATUS_INVALID(2102, "Agent状态非法"),
+
+    // ----- Tool 模块(22xx) -----
+    /** 工具不存在或不属于当前工作空间 */
+    TOOL_NOT_FOUND(2201, "工具不存在");
 
     private final Integer code;
     private final String message;

@@ -1,36 +1,85 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { mockAuditLogs } from '@/mock/security'
-import { AUDIT_ACTION_MAP } from '@/utils/constants'
+import { ref, computed, onMounted } from 'vue'
 import { formatDateTime } from '@/utils/format'
-import type { AuditLogItem } from '@/types/security'
+import { ElMessage } from 'element-plus'
+import { listAuditLogs } from '@/api/audit'
+import type { AuditLog } from '@/api/audit'
 
-const logs = ref<AuditLogItem[]>([])
+const logs = ref<AuditLog[]>([])
+const loading = ref(false)
 const keyword = ref('')
 const actionFilter = ref('')
 
-onMounted(() => { logs.value = [...mockAuditLogs] })
+async function loadLogs() {
+  loading.value = true
+  try {
+    const res = await listAuditLogs(100)
+    if (res.code === 0) {
+      logs.value = res.data || []
+    }
+  } catch (err: any) {
+    ElMessage.error(err?.message || '加载审计日志失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadLogs()
+})
 
 const filteredLogs = computed(() => {
   let list = logs.value
-  if (keyword.value) list = list.filter(l => l.userName.includes(keyword.value) || l.detail.includes(keyword.value))
-  if (actionFilter.value) list = list.filter(l => l.action === actionFilter.value)
+  if (keyword.value) {
+    const kw = keyword.value.toLowerCase()
+    list = list.filter(l =>
+      (l.userName && l.userName.toLowerCase().includes(kw)) ||
+      (l.detail && l.detail.toLowerCase().includes(kw)) ||
+      (l.resourceName && l.resourceName.toLowerCase().includes(kw))
+    )
+  }
+  if (actionFilter.value) {
+    list = list.filter(l => l.action === actionFilter.value)
+  }
   return list
 })
 
-const actionOptions = computed(() => {
-  return Object.entries(AUDIT_ACTION_MAP).map(([value, label]) => ({ value, label }))
-})
+// 操作类型选项
+const actionOptions = [
+  { value: 'knowledge.create', label: '创建知识库' },
+  { value: 'knowledge.delete', label: '删除知识库' },
+  { value: 'document.upload', label: '上传文档' },
+  { value: 'document.delete', label: '删除文档' },
+]
 
-import { computed } from 'vue'
+/** 操作类型显示名映射 */
+function getActionLabel(action: string): string {
+  const found = actionOptions.find(opt => opt.value === action)
+  return found ? found.label : action
+}
+
+/** 资源类型显示名映射 */
+function getResourceTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    knowledge_base: '知识库',
+    document: '文档',
+    agent: 'Agent',
+    tool: '工具',
+    user: '用户',
+    workspace: '工作空间',
+  }
+  return map[type] || type
+}
 </script>
 
 <template>
-  <div class="audit-log-page">
-    <div class="page-header"><h2>审计日志</h2></div>
+  <div class="audit-log-page" v-loading="loading">
+    <div class="page-header">
+      <h2>审计日志</h2>
+    </div>
     <el-card class="mb-16">
       <div class="filter-bar">
-        <el-input v-model="keyword" placeholder="搜索用户/详情..." style="width:250px" clearable />
+        <el-input v-model="keyword" placeholder="搜索用户/详情/资源..." style="width:280px" clearable />
         <el-select v-model="actionFilter" placeholder="操作类型" style="width:180px" clearable>
           <el-option v-for="opt in actionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
@@ -38,16 +87,34 @@ import { computed } from 'vue'
     </el-card>
     <el-card>
       <el-table :data="filteredLogs" size="small">
-        <el-table-column label="时间" width="160"><template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template></el-table-column>
-        <el-table-column prop="userName" label="用户" width="80" />
-        <el-table-column label="操作" width="120"><template #default="{ row }">{{ AUDIT_ACTION_MAP[row.action] || row.action }}</template></el-table-column>
-        <el-table-column prop="resource" label="资源" width="120" />
+        <el-table-column label="时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column prop="userName" label="用户" width="90" />
+        <el-table-column label="操作" width="110">
+          <template #default="{ row }">{{ getActionLabel(row.action) }}</template>
+        </el-table-column>
+        <el-table-column label="资源类型" width="90">
+          <template #default="{ row }">{{ getResourceTypeLabel(row.resourceType) }}</template>
+        </el-table-column>
+        <el-table-column prop="resourceName" label="资源名称" width="150" show-overflow-tooltip />
         <el-table-column prop="detail" label="详情" show-overflow-tooltip />
-        <el-table-column prop="ip" label="IP" width="130" />
-        <el-table-column label="结果" width="70"><template #default="{ row }"><el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small">{{ row.result === 'success' ? '成功' : '失败' }}</el-tag></template></el-table-column>
+        <el-table-column prop="ipAddress" label="IP" width="130" />
+        <el-table-column label="结果" width="70" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small">
+              {{ row.result === 'success' ? '成功' : '失败' }}
+            </el-tag>
+          </template>
+        </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && filteredLogs.length === 0" description="暂无审计日志" />
     </el-card>
   </div>
 </template>
 
-<style scoped>.audit-log-page { max-width: 1400px; }</style>
+<style scoped>
+.audit-log-page { max-width: 1400px; }
+.filter-bar { display: flex; gap: 12px; }
+.mb-16 { margin-bottom: 16px; }
+</style>
