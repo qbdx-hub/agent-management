@@ -222,14 +222,12 @@ export async function uploadDocument(
 }
 
 /**
- * DELETE /knowledge-bases/documents/:id?kbId=xxx —— 删除文档
+ * DELETE /knowledge-bases/:kbId/documents/:docId —— 删除文档
  * @param docId 文档 ID
- * @param kbId  知识库 ID（后端校验归属用）
+ * @param kbId  知识库 ID
  */
 export async function deleteDocument(docId: number, kbId: number): Promise<ApiResponse<null>> {
-  const res = await http.delete<ApiResponse<null>>(`/knowledge-bases/documents/${docId}`, {
-    params: { kbId },
-  })
+  const res = await http.delete<ApiResponse<null>>(`/knowledge-bases/${kbId}/documents/${docId}`)
   return res.data
 }
 
