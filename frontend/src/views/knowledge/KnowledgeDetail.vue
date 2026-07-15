@@ -37,8 +37,8 @@ async function loadDetail() {
     ])
     if (kbRes.code === 0) kb.value = kbRes.data
     if (docRes.code === 0) documents.value = docRes.data || []
-  } catch {
-    // 忽略网络错误
+  } catch (err: any) {
+    ElMessage.error(err?.message || '加载知识库详情失败')
   } finally {
     loading.value = false
   }
@@ -107,8 +107,8 @@ async function handleUpload(options: any): Promise<void> {
       // 上传完成后刷新文档列表
       await refreshDocuments()
     }
-  } catch {
-    // 忽略网络错误
+  } catch (err: any) {
+    ElMessage.error(err?.message || `"${file.name}" 上传失败`)
   } finally {
     uploading.value = false
     uploadProgress.value = 0
@@ -125,8 +125,8 @@ async function refreshDocuments() {
     if (res.code === 0) {
       documents.value = res.data || []
     }
-  } catch {
-    // 忽略网络错误
+  } catch (err: any) {
+    ElMessage.error(err?.message || '刷新文档列表失败')
   }
 }
 
@@ -140,8 +140,8 @@ async function handleDeleteDoc(doc: Document) {
       ElMessage.success('删除成功')
       documents.value = documents.value.filter(d => d.id !== doc.id)
     }
-  } catch {
-    // 忽略网络错误
+  } catch (err: any) {
+    ElMessage.error(err?.message || '删除文档失败')
   }
 }
 
