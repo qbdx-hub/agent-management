@@ -1,0 +1,74 @@
+server:
+  port: 8080
+  servlet:
+    # 统一 API 前缀，controller 类上不要再重复写 /api/v1
+    context-path: /api/v1
+
+spring:
+  application:
+    name: agent_management
+
+  # ===== 数据源（Druid 连接池）=====
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/agent_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    # 本地默认 tb123；生产用环境变量 MYSQL_PASSWORD 覆盖，避免明文密码进 git
+    password: ${MYSQL_PASSWORD:tb123}
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+
+  # ===== Jackson 序列化 =====
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+
+  # ===== Redis =====
+  redis:
+    host: localhost
+    port: 6379
+    database: 1
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # ===== 文件上传（按规范保留，登录用不到）=====
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+# ===== MyBatis-Plus =====
+mybatis-plus:
+  mapper-locations:
+    - classpath*:/mapper/**/*.xml
+  type-aliases-package: com.agentmanagement.entity
+  configuration:
+    # user_id → userId 自动驼峰映射
+    map-underscore-to-camel-case: true
+    # 开发期打印 SQL，生产关闭
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+# ===== JWT =====
+jwt:
+  # HS256 要求 >= 32 字节，否则启动抛 WeakKeyException；生产走环境变量 JWT_SECRET
+  secret: ${JWT_SECRET:agent_management_jwt_secret_key_2026_at_least_32_bytes}
+  expiration: 86400000          # 24h，毫秒
+  header: Authorization
+  prefix: "Bearer "
+
+logging:
+  level:
+    root: info
+    com.agentmanagement: debug
+    com.agentmanagement.mapper: debug

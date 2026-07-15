@@ -713,9 +713,9 @@ CREATE TABLE IF NOT EXISTS `model_pricing` (
 
 -- 默认用户 (密码: admin123, BCrypt)
 INSERT INTO `user` (`id`, `username`, `password`, `email`, `nickname`, `status`) VALUES
-(1, 'admin', '$2a$10$N.ZOn9MHQb288bBjBuRxEOjlQQL2Vl/6G2VBtPMkxBnxNzV1FJhS6', 'admin@example.com', '管理员', 1),
-(2, 'dev1', '$2a$10$N.ZOn9MHQb288bBjBuRxEOjlQQL2Vl/6G2VBtPMkxBnxNzV1FJhS6', 'dev1@example.com', '开发者1', 1),
-(3, 'dev2', '$2a$10$N.ZOn9MHQb288bBjBuRxEOjlQQL2Vl/6G2VBtPMkxBnxNzV1FJhS6', 'dev2@example.com', '开发者2', 1);
+(1, 'admin', '$2a$10$h9U/iaAWHby8rZTpCr5Zgu5AwuDlk.wt0ODR4G.zQHirOxVdSLf9y', 'admin@example.com', '管理员', 1),
+(2, 'dev1', '$2a$10$h9U/iaAWHby8rZTpCr5Zgu5AwuDlk.wt0ODR4G.zQHirOxVdSLf9y', 'dev1@example.com', '开发者1', 1),
+(3, 'dev2', '$2a$10$h9U/iaAWHby8rZTpCr5Zgu5AwuDlk.wt0ODR4G.zQHirOxVdSLf9y', 'dev2@example.com', '开发者2', 1);
 
 -- 默认工作空间
 INSERT INTO `workspace` (`id`, `name`, `description`, `icon`, `owner_id`, `default_model_provider`, `language`) VALUES
