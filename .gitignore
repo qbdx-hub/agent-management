@@ -57,3 +57,10 @@ application-prod.yml
 .cache/
 temp/
 tmp/
+
+# --- 工具/临时工作目录（不提交）---
+.workbuddy/
+scratch/
+
+# --- 误放的临时图片（如截图，按需调整）---
+frontend/12a1eedf-b1bb-46f7-895d-90f95a55543d.png
