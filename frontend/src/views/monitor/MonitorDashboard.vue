@@ -46,7 +46,7 @@ function healthColor(status: string) {
         <div class="metric-val">{{ formatNumber(overview.todayCallCount) }}</div>
         <div class="metric-lbl">今日调用</div>
         <div class="metric-trend" :class="overview.trends.callCountChange > 0 ? 'up' : 'down'">
-          {{ overview.trends.callCountChange > 0 ? '↑' : '↓' }} {{ Math.abs(overview.trends.callCountChange * 100).toFixed(1) }}%
+          <el-icon v-if="overview.trends.callCountChange > 0"><ArrowUp /></el-icon><el-icon v-else><ArrowDown /></el-icon> {{ Math.abs(overview.trends.callCountChange * 100).toFixed(1) }}%
         </div>
       </el-card>
       <el-card shadow="hover" class="metric-card">

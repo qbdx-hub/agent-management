@@ -11,7 +11,7 @@ const agentStore = useAgentStore()
 const form = reactive({
   name: '',
   description: '',
-  avatar: '🤖',
+  avatar: '23-ai-robot',
   tags: [] as string[],
   status: 'draft' as const,
 })
@@ -19,7 +19,7 @@ const form = reactive({
 const tagInput = ref('')
 const loading = ref(false)
 
-const avatarOptions = ['🤖', '🔍', '📄', '📊', '💬', '🚀', '🛠️', '🎨', '📝', '🔬', '💡', '🎯']
+const avatarOptions = ['23-ai-robot', '07-lightbulb', '02-rocket', '24-trophy', '25-medal', '16-tea', '21-moon', '27-gift', '26-guitar', '19-camera', '03-bell', '14-globe']
 
 function addTag() {
   if (tagInput.value && !form.tags.includes(tagInput.value)) {
@@ -45,7 +45,7 @@ async function handleSubmit() {
     // 重置
     form.name = ''
     form.description = ''
-    form.avatar = '🤖'
+    form.avatar = '23-ai-robot'
     form.tags = []
   } catch {
     ElMessage.error('创建失败')
@@ -78,7 +78,7 @@ import { ref } from 'vue'
             :class="{ active: form.avatar === a }"
             @click="form.avatar = a"
           >
-            {{ a }}
+            <AgentAvatar :avatar="a" :size="32" />
           </span>
         </div>
       </el-form-item>

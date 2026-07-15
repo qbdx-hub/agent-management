@@ -23,7 +23,7 @@ function goToSessions() { router.push(`/agents/${agentId.value}/sessions`) }
     <el-card v-if="agent" class="mb-16">
       <div class="detail-header">
         <div class="detail-info">
-          <span class="detail-avatar">{{ agent.avatar }}</span>
+          <AgentAvatar :avatar="agent.avatar" :size="56" />
           <div>
             <div class="detail-name">{{ agent.name }}</div>
             <div class="text-muted">{{ agent.description }}</div>

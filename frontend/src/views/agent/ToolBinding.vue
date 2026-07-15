@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useAgentStore } from '@/stores/agent'
 import { mockTools } from '@/mock/tools'
 import { ElMessage } from 'element-plus'
+import ToolIcon from '@/components/ToolIcon.vue'
 
 const agentStore = useAgentStore()
 const agent = computed(() => agentStore.current)
@@ -47,7 +48,7 @@ async function handleSave() {
       <el-col v-for="tool in allTools" :key="tool.id" :span="8">
         <el-card shadow="hover" class="tool-bind-card" :class="{ bound: isBound(tool.id) }" @click="toggleTool(tool.id)">
           <div class="tool-bind-header">
-            <span class="tool-icon">{{ tool.icon }}</span>
+            <ToolIcon :icon="tool.icon" :size="24" />
             <div>
               <div class="tool-name">{{ tool.displayName }}</div>
               <div class="text-muted" style="font-size:12px">{{ tool.categoryLabel }}</div>

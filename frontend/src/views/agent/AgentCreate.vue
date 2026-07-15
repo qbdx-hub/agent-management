@@ -11,12 +11,12 @@ const currentStep = ref(0)
 const loading = ref(false)
 
 const form = reactive({
-  name: '', description: '', avatar: '🤖', tags: [] as string[],
+  name: '', description: '', avatar: '23-ai-robot', tags: [] as string[],
   modelProvider: '', modelName: '', temperature: 0.7, maxTokens: 4096,
 })
 
 const tagInput = ref('')
-const avatarOptions = ['🤖', '🔍', '📄', '📊', '💬', '🚀', '🛠️', '🎨', '📝', '🔬', '💡', '🎯']
+const avatarOptions = ['23-ai-robot', '07-lightbulb', '02-rocket', '24-trophy', '25-medal', '16-tea', '21-moon', '27-gift', '26-guitar', '19-camera', '03-bell', '14-globe']
 const selectedProvider = ref(mockModelProviders[0])
 
 function handleProviderChange(val: string) {
@@ -37,7 +37,11 @@ function prevStep() { if (currentStep.value > 0) currentStep.value-- }
 async function handleFinish() {
   loading.value = true
   try {
-    const id = await agentStore.createAgent({ name: form.name, description: form.description, avatar: form.avatar, tags: form.tags, status: 'draft' })
+    const id = await agentStore.createAgent({
+      name: form.name, description: form.description, avatar: form.avatar, tags: form.tags, status: 'draft',
+      modelProvider: form.modelProvider, modelName: form.modelName,
+      temperature: form.temperature, maxTokens: form.maxTokens,
+    })
     ElMessage.success('创建成功')
     router.push(`/agents/${id}`)
   } catch { ElMessage.error('创建失败') } finally { loading.value = false }
@@ -56,7 +60,7 @@ async function handleFinish() {
         <el-form label-width="100px" style="max-width:600px">
           <el-form-item label="头像">
             <div class="avatar-grid">
-              <span v-for="a in avatarOptions" :key="a" class="avatar-option" :class="{ active: form.avatar === a }" @click="form.avatar = a">{{ a }}</span>
+              <span v-for="a in avatarOptions" :key="a" class="avatar-option" :class="{ active: form.avatar === a }" @click="form.avatar = a"><AgentAvatar :avatar="a" :size="32" /></span>
             </div>
           </el-form-item>
           <el-form-item label="名称" required><el-input v-model="form.name" placeholder="例如：代码审查助手" maxlength="50" /></el-form-item>
@@ -79,7 +83,7 @@ async function handleFinish() {
 
       <div v-show="currentStep === 2">
         <el-descriptions title="确认信息" :column="1" border>
-          <el-descriptions-item label="头像"><span style="font-size:24px">{{ form.avatar }}</span></el-descriptions-item>
+          <el-descriptions-item label="头像"><AgentAvatar :avatar="form.avatar" :size="32" /></el-descriptions-item>
           <el-descriptions-item label="名称">{{ form.name }}</el-descriptions-item>
           <el-descriptions-item label="描述">{{ form.description || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="标签"><el-tag v-for="tag in form.tags" :key="tag" style="margin-right:4px">{{ tag }}</el-tag><span v-if="!form.tags.length" class="text-muted">无</span></el-descriptions-item>

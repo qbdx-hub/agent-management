@@ -79,3 +79,16 @@ body {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* 行内小图标（替代 emoji 的 el-icon / PNG 统一基线与间距） */
+.ii {
+  vertical-align: -0.18em;
+  margin-right: 3px;
+}
+.ii-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: -0.18em;
+  margin-right: 3px;
+}

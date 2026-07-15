@@ -3,49 +3,49 @@ import type { ToolSummary, ToolDetail, ToolTestResult, ToolStats } from '@/types
 export const mockTools: ToolSummary[] = [
   {
     id: 1, name: 'search_web', displayName: '网页搜索', description: '搜索互联网获取最新信息',
-    category: 'search', categoryLabel: '查询类', icon: '🔍', type: 'api', status: 'active',
+    category: 'search', categoryLabel: '查询类', icon: '09-search', type: 'api', status: 'active',
     bindAgentCount: 3, totalCalls: 1500, successRate: 0.995, avgLatencyMs: 320,
     createdAt: '2026-07-10T10:00:00+08:00',
   },
   {
     id: 2, name: 'code_executor', displayName: '代码执行', description: '在沙箱中执行 Python/JS 代码',
-    category: 'compute', categoryLabel: '计算类', icon: '⚡', type: 'api', status: 'active',
+    category: 'compute', categoryLabel: '计算类', icon: '07-lightbulb', type: 'api', status: 'active',
     bindAgentCount: 2, totalCalls: 680, successRate: 0.972, avgLatencyMs: 1500,
     createdAt: '2026-07-09T14:00:00+08:00',
   },
   {
     id: 3, name: 'file_reader', displayName: '文件读取', description: '读取本地或远程文件内容',
-    category: 'operate', categoryLabel: '操作类', icon: '📁', type: 'builtin', status: 'active',
+    category: 'operate', categoryLabel: '操作类', icon: '05-document', type: 'builtin', status: 'active',
     bindAgentCount: 5, totalCalls: 3200, successRate: 0.998, avgLatencyMs: 50,
     createdAt: '2026-07-01T09:00:00+08:00',
   },
   {
     id: 4, name: 'github_api', displayName: 'GitHub API', description: '调用 GitHub REST API，管理 PR/Issue/仓库',
-    category: 'operate', categoryLabel: '操作类', icon: '🐙', type: 'mcp', status: 'active',
+    category: 'operate', categoryLabel: '操作类', icon: '14-globe', type: 'mcp', status: 'active',
     bindAgentCount: 2, totalCalls: 450, successRate: 0.988, avgLatencyMs: 600,
     createdAt: '2026-07-05T10:00:00+08:00',
   },
   {
     id: 5, name: 'email_sender', displayName: '邮件发送', description: '通过 SMTP 发送邮件通知',
-    category: 'notify', categoryLabel: '通知类', icon: '📧', type: 'api', status: 'active',
+    category: 'notify', categoryLabel: '通知类', icon: '22-mail', type: 'api', status: 'active',
     bindAgentCount: 1, totalCalls: 120, successRate: 0.95, avgLatencyMs: 800,
     createdAt: '2026-07-08T11:00:00+08:00',
   },
   {
     id: 6, name: 'image_analyzer', displayName: '图片分析', description: '分析图片内容，识别物体和文字',
-    category: 'perceive', categoryLabel: '感知类', icon: '🖼️', type: 'api', status: 'inactive',
+    category: 'perceive', categoryLabel: '感知类', icon: '19-camera', type: 'api', status: 'inactive',
     bindAgentCount: 0, totalCalls: 30, successRate: 0.867, avgLatencyMs: 2500,
     createdAt: '2026-07-11T09:00:00+08:00',
   },
   {
     id: 7, name: 'db_query', displayName: '数据库查询', description: '连接 MySQL/PostgreSQL 执行查询',
-    category: 'search', categoryLabel: '查询类', icon: '🗄️', type: 'api', status: 'active',
+    category: 'search', categoryLabel: '查询类', icon: '04-notebook', type: 'api', status: 'active',
     bindAgentCount: 1, totalCalls: 800, successRate: 0.976, avgLatencyMs: 200,
     createdAt: '2026-07-03T15:00:00+08:00',
   },
   {
     id: 8, name: 'slack_notifier', displayName: 'Slack 通知', description: '发送消息到 Slack 频道',
-    category: 'notify', categoryLabel: '通知类', icon: '💬', type: 'api', status: 'active',
+    category: 'notify', categoryLabel: '通知类', icon: '01-chat', type: 'api', status: 'active',
     bindAgentCount: 2, totalCalls: 300, successRate: 0.993, avgLatencyMs: 400,
     createdAt: '2026-07-06T08:00:00+08:00',
   },
@@ -53,7 +53,7 @@ export const mockTools: ToolSummary[] = [
 
 export const mockToolDetail: ToolDetail = {
   id: 4, name: 'github_api', displayName: 'GitHub API', description: '调用 GitHub REST API，管理 PR/Issue/仓库',
-  category: 'operate', categoryLabel: '操作类', icon: '🐙', type: 'mcp', status: 'active',
+  category: 'operate', categoryLabel: '操作类', icon: '14-globe', type: 'mcp', status: 'active',
   endpoint: { url: 'https://api.github.com', method: 'GET', headers: { Authorization: 'Bearer {{github_token}}', 'Content-Type': 'application/json' }, timeoutMs: 15000 },
   parameters: [
     { name: 'owner', type: 'string', required: true, description: '仓库所有者' },

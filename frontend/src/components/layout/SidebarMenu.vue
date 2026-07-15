@@ -48,7 +48,7 @@ function onSelect(path: string) {
   <div class="sidebar">
     <div class="sidebar-logo">
       <span v-if="!appStore.sidebarCollapsed" class="logo-text">Agent 管理</span>
-      <span v-else class="logo-icon">🤖</span>
+      <img v-else src="/icons/23-ai-robot.png" class="logo-icon" alt="logo" />
     </div>
     <el-menu
       :default-active="activeMenu"
@@ -85,7 +85,9 @@ function onSelect(path: string) {
   white-space: nowrap;
 }
 .logo-icon {
-  font-size: 24px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 .el-menu {
   border-right: none;

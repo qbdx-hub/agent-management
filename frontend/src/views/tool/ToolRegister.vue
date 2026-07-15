@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { registerTool } from '@/api/tool'
 import { TOOL_CATEGORY_MAP } from '@/utils/constants'
 import { ElMessage } from 'element-plus'
-import type { ToolParameter } from '@/types/tool'
+import type { ToolCategory, ToolEndpoint, ToolParameter } from '@/types/tool'
+import ToolIcon from '@/components/ToolIcon.vue'
 
 const router = useRouter()
 const loading = ref(false)
 
 const form = reactive({
-  name: '', displayName: '', description: '', category: 'search' as string, icon: '🔧',
+  name: '', displayName: '', description: '', category: 'search' as string, icon: '08-settings',
   endpoint: { url: '', method: 'POST' as string, headers: {} as Record<string, string>, timeoutMs: 10000 },
   parameters: [] as ToolParameter[],
   responseMapping: '', credentialRef: '', retryOnFail: true, maxRetries: 2,
@@ -34,9 +36,28 @@ async function handleSubmit() {
   if (!form.name || !form.displayName) { ElMessage.warning('请填写工具名称'); return }
   loading.value = true
   try {
+    const res = await registerTool({
+      name: form.name, displayName: form.displayName, description: form.description,
+      category: form.category as ToolCategory, icon: form.icon, type: 'api',
+      endpoint: {
+        url: form.endpoint.url,
+        method: form.endpoint.method as ToolEndpoint['method'],
+        headers: form.endpoint.headers,
+        timeoutMs: form.endpoint.timeoutMs,
+      },
+      parameters: form.parameters,
+      responseMapping: form.responseMapping,
+      credentialRef: form.credentialRef,
+      retryOnFail: form.retryOnFail,
+      maxRetries: form.maxRetries,
+    })
     ElMessage.success('工具注册成功')
-    router.push('/tools')
-  } catch { ElMessage.error('注册失败') } finally { loading.value = false }
+    router.push(`/tools/${res.data.id}`)
+  } catch {
+    // 错误已由 axios 响应拦截器统一 ElMessage 提示
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -52,7 +73,12 @@ async function handleSubmit() {
         <el-form-item label="分类">
           <el-select v-model="form.category"><el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" /></el-select>
         </el-form-item>
-        <el-form-item label="图标"><el-input v-model="form.icon" style="width:80px" /></el-form-item>
+        <el-form-item label="图标">
+          <div style="display:flex;align-items:center;gap:12px">
+            <el-input v-model="form.icon" style="width:160px" placeholder="如 09-search" />
+            <ToolIcon :icon="form.icon" :size="32" />
+          </div>
+        </el-form-item>
 
         <el-divider content-position="left">Endpoint 配置</el-divider>
         <el-form-item label="URL"><el-input v-model="form.endpoint.url" placeholder="https://api.example.com/v1/search" /></el-form-item>

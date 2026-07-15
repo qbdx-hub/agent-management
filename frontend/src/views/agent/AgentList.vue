@@ -78,7 +78,7 @@ function goToChat(id: number) {
         <el-table-column label="Agent" min-width="200">
           <template #default="{ row }">
             <div class="agent-cell" @click="router.push(`/agents/${row.id}`)">
-              <span class="agent-avatar">{{ row.avatar }}</span>
+              <AgentAvatar :avatar="row.avatar" :size="40" />
               <div>
                 <div class="agent-name">{{ row.name }}</div>
                 <div class="agent-desc text-muted">{{ row.description }}</div>

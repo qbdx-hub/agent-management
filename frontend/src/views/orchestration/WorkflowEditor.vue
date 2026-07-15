@@ -1,46 +1,181 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { VueFlow, useVueFlow, Position, Handle, type Connection } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
+import '@vue-flow/controls/dist/style.css'
+import '@vue-flow/minimap/dist/style.css'
+import { getWorkflow, saveWorkflow } from '@/api/workflow'
+import type { WorkflowStatus } from '@/types/workflow'
 
 const route = useRoute()
 const router = useRouter()
 const workflowId = Number(route.params.id)
 
-// 节点数据
-const nodes = ref([
-  { id: 'n1', type: 'agent', label: '需求分析', agentName: '代码审查助手', x: 100, y: 100 },
-  { id: 'n2', type: 'agent', label: '代码生成', agentName: '文档生成器', x: 100, y: 250 },
-  { id: 'n3', type: 'agent', label: '代码审查', agentName: 'PR 审查机器人', x: 100, y: 400 },
-  { id: 'n4', type: 'condition', label: '是否有问题?', x: 350, y: 250 },
-  { id: 'n5', type: 'approval', label: '人工确认', x: 550, y: 400 },
-])
+const form = reactive({
+  name: '',
+  description: '',
+  status: 'draft' as WorkflowStatus,
+})
 
-const edges = ref([
-  { from: 'n1', to: 'n2' },
-  { from: 'n2', to: 'n3' },
-  { from: 'n3', to: 'n4' },
-  { from: 'n4', to: 'n5' },
-])
-
+// Vue Flow 的 Node/Edge 泛型（GraphNode）递归过深会触发 TS2589，这里用 any[] 规避；
+// 节点结构：{ id, type:'custom', position:{x,y}, data:{label,nodeType,agentId?,toolId?,config?} }
+const nodes = ref<any[]>([])
+const edges = ref<any[]>([])
 const selectedNode = ref<any>(null)
+const loading = ref(false)
+const saving = ref(false)
 
-function selectNode(node: any) { selectedNode.value = node }
-function deselectNode() { selectedNode.value = null }
+// data 字段统一用 any 访问（Vue Flow 节点的业务数据：label/nodeType/agentId/toolId/config）
+const selectedData = computed<any>(() => selectedNode.value?.data)
 
-function handleSave() { ElMessage.success('工作流已保存') }
-function handleRun() { ElMessage.success('工作流已启动') }
+const { onConnect, addEdges, onNodeClick, onPaneClick } = useVueFlow()
+
+// 从节点右侧 Handle 拉线到目标节点左侧 Handle -> 创建 edge
+onConnect((connection: Connection) => {
+  addEdges({
+    ...connection,
+    id: 'e_' + Date.now(),
+    type: 'smoothstep',
+    data: { condition: null },
+  })
+})
+
+onNodeClick(({ node }) => {
+  selectedNode.value = node
+})
+
+onPaneClick(() => {
+  selectedNode.value = null
+})
+
+const NODE_ICONS: Record<string, string> = {
+  start: 'CaretRight', agent: 'Cpu', tool: 'Tools', condition: 'Share', approval: 'Avatar', end: 'VideoPause',
+}
+const NODE_LABELS: Record<string, string> = {
+  start: '开始', agent: '新 Agent', tool: '新工具', condition: '条件判断', approval: '人工审批', end: '结束',
+}
+
+function iconOf(t: string) {
+  return NODE_ICONS[t] || 'Grid'
+}
+
+function addNode(nodeType: string) {
+  const id = 'n_' + Date.now()
+  nodes.value = [
+    ...nodes.value,
+    {
+      id,
+      type: 'custom',
+      position: { x: 250 + Math.random() * 80, y: 120 + nodes.value.length * 24 },
+      data: { label: NODE_LABELS[nodeType] || '节点', nodeType },
+    },
+  ]
+  selectedNode.value = nodes.value[nodes.value.length - 1]
+}
+
+function removeSelectedNode() {
+  if (!selectedNode.value) return
+  const id = selectedNode.value.id
+  nodes.value = nodes.value.filter(n => n.id !== id)
+  edges.value = edges.value.filter(e => e.source !== id && e.target !== id)
+  selectedNode.value = null
+}
+
+function handleRun() {
+  ElMessage.info('运行功能待接入')
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const res = await getWorkflow(workflowId)
+    if (res.code === 0) {
+      const d = res.data
+      form.name = d.name
+      form.description = d.description || ''
+      form.status = d.status
+      nodes.value = d.nodes.map(n => ({
+        id: n.nodeId,
+        type: 'custom',
+        position: { x: n.positionX, y: n.positionY },
+        data: {
+          label: n.label,
+          nodeType: n.type,
+          agentId: n.agentId,
+          toolId: n.toolId,
+          config: n.config,
+        },
+      }))
+      edges.value = d.edges.map(e => ({
+        id: e.edgeId,
+        source: e.sourceNodeId,
+        target: e.targetNodeId,
+        label: e.label,
+        type: 'smoothstep',
+        data: { condition: e.condition },
+      }))
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleSave() {
+  if (!form.name.trim()) {
+    ElMessage.warning('请填写工作流名称')
+    return
+  }
+  saving.value = true
+  try {
+    const res = await saveWorkflow(workflowId, {
+      name: form.name,
+      description: form.description,
+      status: form.status,
+      nodes: nodes.value.map(n => ({
+        nodeId: n.id,
+        type: (n.data as any)?.nodeType || 'agent',
+        label: (n.data as any)?.label || '',
+        agentId: (n.data as any)?.agentId,
+        toolId: (n.data as any)?.toolId,
+        config: (n.data as any)?.config,
+        positionX: n.position.x,
+        positionY: n.position.y,
+      })),
+      edges: edges.value.map(e => ({
+        edgeId: e.id,
+        sourceNodeId: e.source,
+        targetNodeId: e.target,
+        label: e.label as string | undefined,
+        condition: (e.data as any)?.condition,
+      })),
+    })
+    if (res.code === 0) ElMessage.success('画布已保存')
+  } catch {
+    // 错误已由 axios 响应拦截器统一提示
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(load)
 </script>
 
 <template>
-  <div class="workflow-editor-page">
+  <div class="workflow-editor-page" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
         <el-button text @click="router.push('/orchestration')"><el-icon><ArrowLeft /></el-icon></el-button>
-        <h2>编排画布</h2>
+        <el-input v-model="form.name" style="width:240px" placeholder="工作流名称" />
+        <el-tag size="small">{{ form.status }}</el-tag>
       </div>
       <div style="display:flex;gap:8px">
-        <el-button @click="handleSave"><el-icon><Check /></el-icon> 保存</el-button>
+        <el-button :loading="saving" @click="handleSave"><el-icon><Check /></el-icon> 保存</el-button>
         <el-button type="primary" @click="handleRun"><el-icon><VideoPlay /></el-icon> 运行</el-button>
       </div>
     </div>
@@ -49,53 +184,44 @@ function handleRun() { ElMessage.success('工作流已启动') }
       <!-- 画布 -->
       <el-col :span="16">
         <el-card class="canvas-card">
-          <div class="canvas-area">
-            <svg class="canvas-svg" width="100%" height="500">
-              <!-- 连线 -->
-              <line v-for="(edge, idx) in edges" :key="idx"
-                :x1="nodes.find(n => n.id === edge.from)?.x! + 80"
-                :y1="nodes.find(n => n.id === edge.from)?.y! + 25"
-                :x2="nodes.find(n => n.id === edge.to)?.x! + 80"
-                :y2="nodes.find(n => n.id === edge.to)?.y! + 25"
-                stroke="#c0c4cc" stroke-width="2" marker-end="url(#arrow)"
-              />
-              <defs>
-                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#c0c4cc" />
-                </marker>
-              </defs>
-            </svg>
+          <VueFlow
+            v-model:nodes="nodes"
+            v-model:edges="edges"
+            fit-view-on-init
+            class="vue-flow-canvas"
+          >
+            <Background :gap="20" pattern-color="#dcdfe6" />
+            <Controls />
+            <MiniMap />
 
-            <!-- 节点 -->
-            <div
-              v-for="node in nodes" :key="node.id"
-              class="canvas-node"
-              :class="[node.type, { selected: selectedNode?.id === node.id }]"
-              :style="{ left: node.x + 'px', top: node.y + 'px' }"
-              @click="selectNode(node)"
-            >
-              <div class="node-icon">
-                <span v-if="node.type === 'agent'">🤖</span>
-                <span v-else-if="node.type === 'condition'">🔀</span>
-                <span v-else>👤</span>
+            <!-- 统一自定义节点：按 data.nodeType 区分图标 / 配色 -->
+            <template #node-custom="props">
+              <div
+                class="wf-node"
+                :class="props.data.nodeType"
+                :style="{ outline: selectedNode?.id === props.id ? '2px solid var(--el-color-primary)' : 'none' }"
+              >
+                <Handle type="target" :position="Position.Left" />
+                <el-icon class="wf-node-icon"><component :is="iconOf(props.data.nodeType)" /></el-icon>
+                <div class="wf-node-label">{{ props.data.label }}</div>
+                <Handle type="source" :position="Position.Right" />
               </div>
-              <div class="node-label">{{ node.label }}</div>
-              <div v-if="node.agentName" class="node-agent text-muted">{{ node.agentName }}</div>
-            </div>
-          </div>
-          <div class="canvas-tip text-muted">点击节点查看详情，拖拽可移动位置（完整拖拽功能需集成 Vue Flow）</div>
+            </template>
+          </VueFlow>
+          <div class="canvas-tip text-muted">拖拽节点移动位置 · 从节点右侧拉线到目标节点左侧创建连线 · 滚轮缩放 · 拖拽空白平移画布</div>
         </el-card>
       </el-col>
 
-      <!-- 属性面板 -->
+      <!-- 右侧：属性 + 添加节点 -->
       <el-col :span="8">
         <el-card v-if="selectedNode">
           <template #header><span>节点属性</span></template>
-          <el-form label-width="80px">
-            <el-form-item label="类型"><el-tag>{{ selectedNode.type === 'agent' ? 'Agent' : selectedNode.type === 'condition' ? '条件' : '审批' }}</el-tag></el-form-item>
-            <el-form-item label="名称"><el-input v-model="selectedNode.label" /></el-form-item>
-            <el-form-item v-if="selectedNode.agentName" label="Agent"><el-input v-model="selectedNode.agentName" /></el-form-item>
+          <el-form label-width="72px">
+            <el-form-item label="类型"><el-tag>{{ selectedData?.nodeType }}</el-tag></el-form-item>
+            <el-form-item label="名称"><el-input v-model="selectedData.label" /></el-form-item>
+            <el-form-item v-if="selectedData?.nodeType === 'agent'" label="Agent"><el-input v-model="selectedData.agentName" placeholder="关联 Agent 名称" /></el-form-item>
           </el-form>
+          <el-button type="danger" plain size="small" style="width:100%" @click="removeSelectedNode">删除节点</el-button>
         </el-card>
         <el-card v-else>
           <el-empty description="点击节点查看属性" :image-size="60" />
@@ -104,9 +230,12 @@ function handleRun() { ElMessage.success('工作流已启动') }
         <el-card style="margin-top:16px">
           <template #header><span>添加节点</span></template>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <el-button @click="nodes.push({ id: 'n' + Date.now(), type: 'agent', label: '新 Agent 节点', agentName: '', x: 200, y: 200 + nodes.length * 60 })"><el-icon><Plus /></el-icon> Agent 节点</el-button>
-            <el-button @click="nodes.push({ id: 'n' + Date.now(), type: 'condition', label: '条件判断', x: 200, y: 200 + nodes.length * 60 })"><el-icon><Plus /></el-icon> 条件节点</el-button>
-            <el-button @click="nodes.push({ id: 'n' + Date.now(), type: 'approval', label: '人工审批', x: 200, y: 200 + nodes.length * 60 })"><el-icon><Plus /></el-icon> 审批节点</el-button>
+            <el-button @click="addNode('start')"><el-icon class="ii"><CaretRight /></el-icon>开始</el-button>
+            <el-button @click="addNode('agent')"><el-icon class="ii"><Cpu /></el-icon>Agent 节点</el-button>
+            <el-button @click="addNode('tool')"><el-icon class="ii"><Tools /></el-icon>工具节点</el-button>
+            <el-button @click="addNode('condition')"><el-icon class="ii"><Share /></el-icon>条件节点</el-button>
+            <el-button @click="addNode('approval')"><el-icon class="ii"><Avatar /></el-icon>审批节点</el-button>
+            <el-button @click="addNode('end')"><el-icon class="ii"><VideoPause /></el-icon>结束</el-button>
           </div>
         </el-card>
       </el-col>
@@ -117,16 +246,25 @@ function handleRun() { ElMessage.success('工作流已启动') }
 <style scoped>
 .workflow-editor-page { max-width: 1400px; }
 .canvas-card { position: relative; }
-.canvas-area { position: relative; height: 500px; background: #fafafa; border: 1px solid var(--el-border-color-lighter); border-radius: 6px; overflow: hidden; }
-.canvas-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
-.canvas-node { position: absolute; width: 160px; padding: 12px; background: #fff; border: 2px solid var(--el-border-color); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s; z-index: 1; }
-.canvas-node:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.canvas-node.selected { border-color: var(--el-color-primary); box-shadow: 0 0 0 3px var(--el-color-primary-light-8); }
-.canvas-node.agent { border-color: #409eff; }
-.canvas-node.condition { border-color: #e6a23c; }
-.canvas-node.approval { border-color: #67c23a; }
-.node-icon { font-size: 20px; margin-bottom: 4px; }
-.node-label { font-size: 13px; font-weight: 600; }
-.node-agent { font-size: 11px; }
+.vue-flow-canvas { height: 560px; }
+.wf-node {
+  position: relative;
+  min-width: 140px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 2px solid var(--el-border-color);
+  border-radius: 8px;
+  text-align: center;
+  cursor: grab;
+}
+.wf-node:active { cursor: grabbing; }
+.wf-node.agent { border-color: #409eff; }
+.wf-node.tool { border-color: #909399; }
+.wf-node.condition { border-color: #e6a23c; }
+.wf-node.approval { border-color: #67c23a; }
+.wf-node.start { border-color: #409eff; background: #ecf5ff; }
+.wf-node.end { border-color: #f56c6c; background: #fef0f0; }
+.wf-node-icon { font-size: 20px; margin-bottom: 4px; }
+.wf-node-label { font-size: 13px; font-weight: 600; }
 .canvas-tip { font-size: 12px; text-align: center; padding: 8px; }
 </style>

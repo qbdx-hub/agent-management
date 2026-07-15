@@ -24,15 +24,15 @@ const steps = ref(mockMessages[1]?.steps || [])
         <el-timeline-item v-for="step in steps" :key="step.stepId" :type="step.status === 'success' ? 'success' : step.status === 'error' ? 'danger' : 'primary'" :timestamp="step.startedAt">
           <el-card shadow="never">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span v-if="step.type === 'thinking'">🧠 思考</span>
-              <span v-else>🔧 {{ step.toolName }}</span>
+              <span v-if="step.type === 'thinking'"><el-icon class="ii"><MagicStick /></el-icon>思考</span>
+              <span v-else><el-icon class="ii"><Tools /></el-icon>{{ step.toolName }}</span>
               <el-tag :type="step.status === 'success' ? 'success' : 'danger'" size="small">{{ step.status }}</el-tag>
               <span class="text-muted" style="font-size:12px">{{ formatLatency(step.durationMs) }}</span>
             </div>
             <div v-if="step.content" style="font-size:13px;color:#606266">{{ step.content }}</div>
             <div v-if="step.request" style="margin-top:8px"><pre class="code-block">{{ JSON.stringify(step.request, null, 2) }}</pre></div>
             <div v-if="step.response" style="margin-top:8px"><pre class="code-block">{{ JSON.stringify(step.response, null, 2) }}</pre></div>
-            <div v-if="step.errorMessage" style="color:var(--el-color-danger);font-size:13px;margin-top:4px">❌ {{ step.errorMessage }}</div>
+            <div v-if="step.errorMessage" style="color:var(--el-color-danger);font-size:13px;margin-top:4px"><el-icon class="ii"><CircleCloseFilled /></el-icon>{{ step.errorMessage }}</div>
           </el-card>
         </el-timeline-item>
       </el-timeline>

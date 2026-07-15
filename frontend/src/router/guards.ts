@@ -13,8 +13,10 @@ export function setupGuards(router: Router) {
       return next('/login')
     }
 
-    // 2. 工作空间检查（登录后必须有活跃空间）
-    if (to.path !== '/login' && to.path !== '/workspace/settings' && to.path !== '/dashboard' && !wsStore.isReady) {
+    // 2. 工作空间检查（仅已登录用户需要；dashboard/空间设置页允许无空间进入）。
+    //    关键：未登录用户（含访问 /register）不进此分支，避免触发鉴权请求 -> 401 -> 被拦截器弹回 /login
+    const wsExemptPaths = ['/workspace/settings', '/dashboard']
+    if (userStore.isLoggedIn && !wsExemptPaths.includes(to.path) && !wsStore.isReady) {
       // 优先从 localStorage 恢复
       const savedWsId = localStorage.getItem('workspaceId')
       if (savedWsId) {

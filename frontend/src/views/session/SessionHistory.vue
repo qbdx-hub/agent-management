@@ -14,7 +14,10 @@ const sessions = ref<SessionSummary[]>([])
 onMounted(() => { sessions.value = [...mockSessions] })
 
 function statusIcon(status: string) {
-  switch (status) { case 'completed': return '✅'; case 'active': return '🔄'; case 'error': return '❌'; default: return '⏹️' }
+  switch (status) { case 'completed': return 'CircleCheckFilled'; case 'active': return 'Loading'; case 'error': return 'CircleCloseFilled'; default: return 'VideoPause' }
+}
+function statusColor(status: string) {
+  return status === 'completed' ? '#67c23a' : status === 'active' ? '#409eff' : status === 'error' ? '#f56c6c' : '#909399'
 }
 
 function openSession(sid: number) {
@@ -30,7 +33,7 @@ function openSession(sid: number) {
     </div>
     <el-card>
       <el-table :data="sessions" @row-click="(row: SessionSummary) => openSession(row.sessionId)" style="cursor:pointer">
-        <el-table-column width="40"><template #default="{ row }"><span>{{ statusIcon(row.status) }}</span></template></el-table-column>
+        <el-table-column width="40"><template #default="{ row }"><el-icon :style="{ color: statusColor(row.status) }" :class="{ 'is-loading': row.status === 'active' }"><component :is="statusIcon(row.status)" /></el-icon></template></el-table-column>
         <el-table-column prop="title" label="标题" />
         <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="row.status === 'completed' ? 'success' : row.status === 'error' ? 'danger' : 'info'" size="small">{{ SESSION_STATUS_MAP[row.status] }}</el-tag></template></el-table-column>
         <el-table-column prop="messageCount" label="消息数" width="80" />

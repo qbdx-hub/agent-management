@@ -30,13 +30,13 @@ function handleCreate() {
     <div class="card-grid">
       <el-card v-for="kb in knowledgeBases" :key="kb.id" shadow="hover" class="kb-card" @click="router.push(`/knowledge/${kb.id}`)">
         <div class="kb-header">
-          <span class="kb-icon">📚</span>
+          <img src="/icons/04-notebook.png" class="kb-icon" alt="" />
           <div><div class="kb-name">{{ kb.name }}</div><div class="text-muted" style="font-size:12px">{{ kb.description }}</div></div>
         </div>
         <div class="kb-meta">
-          <span>📄 {{ kb.documentCount }} 文档</span>
-          <span>🔢 {{ kb.vectorCount }} 向量</span>
-          <span>🤖 {{ kb.boundAgentCount }} Agent</span>
+          <span><el-icon class="ii"><Document /></el-icon>{{ kb.documentCount }} 文档</span>
+          <span><el-icon class="ii"><Histogram /></el-icon>{{ kb.vectorCount }} 向量</span>
+          <span><el-icon class="ii"><Cpu /></el-icon>{{ kb.boundAgentCount }} Agent</span>
         </div>
         <div class="text-muted" style="font-size:12px;margin-top:8px">更新于 {{ formatDateTime(kb.updatedAt) }}</div>
       </el-card>
@@ -57,7 +57,7 @@ function handleCreate() {
 .kb-card { cursor: pointer; transition: all 0.2s; }
 .kb-card:hover { transform: translateY(-2px); }
 .kb-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.kb-icon { font-size: 28px; }
+.kb-icon { width: 30px; height: 30px; object-fit: contain; }
 .kb-name { font-weight: 600; font-size: 15px; }
 .kb-meta { display: flex; gap: 16px; font-size: 12px; color: #909399; }
 </style>

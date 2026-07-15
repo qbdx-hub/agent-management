@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { mockToolDetail, mockToolTestSuccess, mockToolStats } from '@/mock/tools'
-import { TOOL_CATEGORY_MAP } from '@/utils/constants'
+import { ElMessage } from 'element-plus'
+import { getToolDetail } from '@/api/tool'
+import { mockToolTestSuccess, mockToolStats } from '@/mock/tools'
 import { formatPercent, formatLatency, formatDateTime } from '@/utils/format'
 import type { ToolDetail as ToolDetailType, ToolTestResult, ToolStats } from '@/types/tool'
+import ToolIcon from '@/components/ToolIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,14 +16,31 @@ const stats = ref<ToolStats | null>(null)
 const activeTab = ref('info')
 const testParams = ref<Record<string, any>>({})
 const testing = ref(false)
+const loading = ref(false)
 
-onMounted(() => {
-  tool.value = { ...mockToolDetail, id: Number(route.params.id) }
+onMounted(async () => {
+  const id = Number(route.params.id)
+  loading.value = true
+  try {
+    const res = await getToolDetail(id)
+    if (res.code === 0 && res.data) {
+      tool.value = res.data
+      // 初始化测试参数默认值
+      ;(res.data.parameters || []).forEach((p: any) => {
+        testParams.value[p.name] = p.defaultValue ?? ''
+      })
+    }
+  } catch {
+    ElMessage.error('加载工具详情失败')
+  } finally {
+    loading.value = false
+  }
+  // 统计接口后端暂未实现，先用占位数据，避免 404 报错
   stats.value = { ...mockToolStats }
-  tool.value.parameters.forEach(p => { testParams.value[p.name] = p.defaultValue || '' })
 })
 
 async function runTest() {
+  // 测试接口后端暂未实现，先用占位结果
   testing.value = true
   setTimeout(() => {
     testResult.value = { ...mockToolTestSuccess }
@@ -31,13 +50,14 @@ async function runTest() {
 </script>
 
 <template>
+  <div v-loading="loading" style="min-height: 300px">
   <div class="tool-detail-page" v-if="tool">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:32px">{{ tool.icon }}</span>
+        <ToolIcon :icon="tool.icon" :size="32" />
         <div>
           <h2 style="margin:0">{{ tool.displayName }}</h2>
-          <div class="text-muted">{{ tool.name }} · {{ tool.categoryLabel }} · {{ tool.type.toUpperCase() }}</div>
+          <div class="text-muted">{{ tool.name }} · {{ tool.categoryLabel }} · {{ tool.type ? tool.type.toUpperCase() : '' }}</div>
         </div>
       </div>
       <el-button @click="router.push('/tools')">返回列表</el-button>
@@ -115,7 +135,8 @@ async function runTest() {
         </el-tab-pane>
 
         <el-tab-pane label="最近调用" name="recent">
-          <el-table :data="tool.recentCalls" border size="small">
+          <el-empty v-if="!tool.recentCalls || tool.recentCalls.length === 0" description="暂无调用记录" />
+          <el-table v-else :data="tool.recentCalls" border size="small">
             <el-table-column label="时间" width="160"><template #default="{ row }">{{ formatDateTime(row.time) }}</template></el-table-column>
             <el-table-column label="参数"><template #default="{ row }"><code>{{ JSON.stringify(row.params) }}</code></template></el-table-column>
             <el-table-column prop="resultSummary" label="结果" width="150" />
@@ -125,6 +146,7 @@ async function runTest() {
         </el-tab-pane>
       </el-tabs>
     </el-card>
+  </div>
   </div>
 </template>
 

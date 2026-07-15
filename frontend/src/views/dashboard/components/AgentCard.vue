@@ -10,7 +10,7 @@ defineEmits<{ click: [] }>()
 <template>
   <el-card shadow="hover" class="agent-card" @click="$emit('click')">
     <div class="agent-card-header">
-      <span class="agent-avatar">{{ agent.avatar }}</span>
+      <AgentAvatar :avatar="agent.avatar" :size="44" />
       <div class="agent-info">
         <div class="agent-name">{{ agent.name }}</div>
         <el-tag :type="(AGENT_STATUS_COLORS[agent.status] as any)" size="small">
@@ -20,9 +20,9 @@ defineEmits<{ click: [] }>()
     </div>
     <div class="agent-desc">{{ agent.description }}</div>
     <div class="agent-meta">
-      <span>🔧 {{ agent.toolCount }} 工具</span>
-      <span>📊 {{ formatPercent(agent.successRate) }} 成功率</span>
-      <span>💬 {{ agent.totalSessions }} 会话</span>
+      <span><el-icon class="ii"><Tools /></el-icon>{{ agent.toolCount }} 工具</span>
+      <span><el-icon class="ii"><TrendCharts /></el-icon>{{ formatPercent(agent.successRate) }} 成功率</span>
+      <span><el-icon class="ii"><ChatDotRound /></el-icon>{{ agent.totalSessions }} 会话</span>
     </div>
   </el-card>
 </template>

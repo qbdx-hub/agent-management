@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { mockTools } from '@/mock/tools'
+import { getToolList } from '@/api/tool'
 import { TOOL_CATEGORY_MAP } from '@/utils/constants'
 import { formatPercent, formatLatency } from '@/utils/format'
 import type { ToolSummary } from '@/types/tool'
+import ToolIcon from '@/components/ToolIcon.vue'
 
 const router = useRouter()
 const tools = ref<ToolSummary[]>([])
 const activeCategory = ref('all')
 const keyword = ref('')
 
-onMounted(() => { tools.value = [...mockTools] })
+onMounted(async () => {
+  const res = await getToolList({ page: 1, pageSize: 100 })
+  if (res.code === 0) tools.value = res.data.list
+})
 
 const filteredTools = computed(() => {
   let list = tools.value
@@ -21,11 +25,8 @@ const filteredTools = computed(() => {
 })
 
 const categories = computed(() => {
-  const keys = Object.keys(TOOL_CATEGORY_MAP) as (keyof typeof TOOL_CATEGORY_MAP)[]
-  return keys
+  return Object.keys(TOOL_CATEGORY_MAP) as (keyof typeof TOOL_CATEGORY_MAP)[]
 })
-
-import { computed } from 'vue'
 </script>
 
 <template>
@@ -48,7 +49,7 @@ import { computed } from 'vue'
     <div class="card-grid">
       <el-card v-for="tool in filteredTools" :key="tool.id" shadow="hover" class="tool-card" @click="router.push(`/tools/${tool.id}`)">
         <div class="tool-card-header">
-          <span class="tool-icon">{{ tool.icon }}</span>
+          <ToolIcon :icon="tool.icon" :size="28" />
           <div class="tool-info">
             <div class="tool-name">{{ tool.displayName }}</div>
             <el-tag size="small" type="info">{{ tool.categoryLabel }}</el-tag>
@@ -57,10 +58,10 @@ import { computed } from 'vue'
         </div>
         <div class="tool-desc text-muted">{{ tool.description }}</div>
         <div class="tool-meta">
-          <span>🤖 {{ tool.bindAgentCount }} Agent</span>
-          <span>📞 {{ tool.totalCalls }} 次调用</span>
-          <span>✅ {{ formatPercent(tool.successRate) }}</span>
-          <span>⏱️ {{ formatLatency(tool.avgLatencyMs) }}</span>
+          <span><el-icon class="ii"><Cpu /></el-icon>{{ tool.bindAgentCount }} Agent</span>
+          <span><el-icon class="ii"><Phone /></el-icon>{{ tool.totalCalls }} 次调用</span>
+          <span><el-icon class="ii"><CircleCheck /></el-icon>{{ formatPercent(tool.successRate) }}</span>
+          <span><el-icon class="ii"><Timer /></el-icon>{{ formatLatency(tool.avgLatencyMs) }}</span>
         </div>
       </el-card>
     </div>

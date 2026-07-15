@@ -14,7 +14,7 @@ const loading = ref(false)
 
 async function handleLogin() {
   if (!form.username || !form.password) {
-    ElMessage.warning('请输入用户名和密码')
+    ElMessage.warning('请输入账号和密码')
     return
   }
   loading.value = true
@@ -55,7 +55,7 @@ async function handleLogin() {
         <el-form-item>
           <el-input
             v-model="form.username"
-            placeholder="用户名"
+            placeholder="用户名 / 邮箱"
             size="large"
             clearable
           >

@@ -44,7 +44,7 @@ export const mockMessages: Message[] = [
       },
       {
         stepId: 2, sequence: 2, type: 'tool_call', status: 'success',
-        toolName: 'GitHub API', toolIcon: '🐙',
+        toolName: 'GitHub API', toolIcon: '14-globe',
         request: { owner: 'myteam', repo: 'agent-mgmt', pr_number: 42 },
         response: { files: ['AuthService.java', 'LoginController.java'], additions: 45, deletions: 12 },
         startedAt: '2026-07-14T14:30:03+08:00', completedAt: '2026-07-14T14:30:04+08:00', durationMs: 800,
@@ -56,7 +56,7 @@ export const mockMessages: Message[] = [
       },
       {
         stepId: 4, sequence: 4, type: 'tool_call', status: 'error',
-        toolName: '代码静态分析', toolIcon: '📊',
+        toolName: '代码静态分析', toolIcon: '11-growth-chart',
         request: { file: 'AuthService.java' },
         response: undefined, errorMessage: '静态分析服务连接超时', retryCount: 2,
         startedAt: '2026-07-14T14:30:07+08:00', completedAt: '2026-07-14T14:30:12+08:00', durationMs: 5200,

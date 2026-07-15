@@ -7,11 +7,19 @@ const recentSessions = mockSessions.slice(0, 5)
 
 function statusIcon(status: string) {
   switch (status) {
-    case 'completed': return '✅'
-    case 'active': return '🔄'
-    case 'error': return '❌'
-    case 'stopped': return '⏹️'
-    default: return '⏳'
+    case 'completed': return 'CircleCheckFilled'
+    case 'active': return 'Loading'
+    case 'error': return 'CircleCloseFilled'
+    case 'stopped': return 'VideoPause'
+    default: return 'Clock'
+  }
+}
+function statusColor(status: string) {
+  switch (status) {
+    case 'completed': return '#67c23a'
+    case 'active': return '#409eff'
+    case 'error': return '#f56c6c'
+    default: return '#909399'
   }
 }
 </script>
@@ -26,7 +34,13 @@ function statusIcon(status: string) {
     </template>
     <div class="task-list">
       <div v-for="session in recentSessions" :key="session.sessionId" class="task-item">
-        <span class="task-icon">{{ statusIcon(session.status) }}</span>
+        <el-icon
+          class="task-icon"
+          :style="{ color: statusColor(session.status) }"
+          :class="{ 'is-loading': session.status === 'active' }"
+        >
+          <component :is="statusIcon(session.status)" />
+        </el-icon>
         <div class="task-info">
           <div class="task-title">{{ session.title }}</div>
           <div class="task-meta text-muted">

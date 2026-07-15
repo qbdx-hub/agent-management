@@ -72,7 +72,7 @@ function simulateSSE() {
   setTimeout(() => {
     assistantMsg.steps!.push({
       stepId: 2, sequence: 2, type: 'tool_call', status: 'success',
-      toolName: '搜索网页', toolIcon: '🔍',
+      toolName: '搜索网页', toolIcon: '09-search',
       request: { query: '相关信息' }, response: { results: ['结果1', '结果2'] },
       startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), durationMs: 800,
     })
@@ -111,7 +111,7 @@ function setMode(mode: ExecutionMode) {
     <div class="console-header">
       <div class="console-header-left">
         <el-button text @click="router.push(`/agents/${agentId}`)"><el-icon><ArrowLeft /></el-icon></el-button>
-        <span class="agent-name">{{ agentStore.current?.avatar }} {{ agentStore.current?.name || 'Agent' }}</span>
+        <span class="agent-name"><AgentAvatar :avatar="agentStore.current?.avatar" :size="28" /> {{ agentStore.current?.name || 'Agent' }}</span>
       </div>
       <div class="console-header-right">
         <el-radio-group v-model="sessionStore.executionMode" size="small" @change="setMode">
@@ -123,7 +123,7 @@ function setMode(mode: ExecutionMode) {
     <!-- 消息区 -->
     <div class="messages-area" ref="messagesRef">
       <div v-if="sessionStore.messages.length === 0" class="empty-chat">
-        <div class="empty-icon">💬</div>
+        <img src="/icons/01-chat.png" class="empty-icon" alt="" />
         <p>开始与 Agent 对话</p>
         <p class="text-muted">输入你的问题，Agent 会自动分析并回答</p>
       </div>
@@ -139,15 +139,15 @@ function setMode(mode: ExecutionMode) {
           <!-- 步骤展示 -->
           <div v-if="msg.steps && msg.steps.length > 0 && showSteps" class="steps-section">
             <div class="steps-header" @click="showSteps = !showSteps">
-              <span>📋 执行步骤 ({{ msg.steps.length }})</span>
+              <span><el-icon class="ii"><List /></el-icon>执行步骤 ({{ msg.steps.length }})</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <div class="steps-list">
               <div v-for="step in msg.steps" :key="step.stepId" class="step-item">
                 <div class="step-icon">
-                  <span v-if="step.type === 'thinking'">🧠</span>
-                  <span v-else-if="step.type === 'tool_call'">🔧</span>
-                  <span v-else>📊</span>
+                  <el-icon v-if="step.type === 'thinking'"><MagicStick /></el-icon>
+                  <el-icon v-else-if="step.type === 'tool_call'"><Tools /></el-icon>
+                  <el-icon v-else><TrendCharts /></el-icon>
                 </div>
                 <div class="step-content">
                   <div class="step-title">
@@ -165,7 +165,7 @@ function setMode(mode: ExecutionMode) {
                   <div v-if="step.type === 'tool_call' && step.response" class="step-detail">
                     <pre class="code-block">{{ JSON.stringify(step.response, null, 2) }}</pre>
                   </div>
-                  <div v-if="step.errorMessage" class="step-error">❌ {{ step.errorMessage }}</div>
+                  <div v-if="step.errorMessage" class="step-error"><el-icon class="ii"><CircleCloseFilled /></el-icon>{{ step.errorMessage }}</div>
                 </div>
               </div>
             </div>
@@ -179,7 +179,7 @@ function setMode(mode: ExecutionMode) {
 
           <!-- Token 用量 -->
           <div v-if="msg.tokenUsage" class="token-usage text-muted">
-            🔢 {{ formatTokens(msg.tokenUsage.total) }} tokens · 💰 {{ formatCost(msg.tokenUsage.cost || 0) }}
+            <el-icon class="ii"><Coin /></el-icon>{{ formatTokens(msg.tokenUsage.total) }} tokens · <el-icon class="ii"><Wallet /></el-icon>{{ formatCost(msg.tokenUsage.cost || 0) }}
           </div>
         </div>
       </div>
@@ -228,7 +228,7 @@ function renderMarkdown(text: string): string {
 .agent-name { font-weight: 600; font-size: 16px; }
 .messages-area { flex: 1; overflow-y: auto; padding: 20px; background: #f5f7fa; }
 .empty-chat { text-align: center; padding: 80px 0; }
-.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-icon { width: 56px; height: 56px; object-fit: contain; margin-bottom: 16px; }
 .message-row { margin-bottom: 16px; }
 .message-row.user { display: flex; justify-content: flex-end; }
 .message-bubble { max-width: 70%; padding: 12px 16px; border-radius: 12px; }
@@ -238,7 +238,7 @@ function renderMarkdown(text: string): string {
 .steps-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 13px; color: #909399; padding: 4px 0; }
 .steps-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .step-item { display: flex; gap: 10px; }
-.step-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.step-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; color: #606266; }
 .step-content { flex: 1; min-width: 0; }
 .step-title { font-size: 13px; font-weight: 500; display: flex; align-items: center; }
 .step-detail { font-size: 12px; margin-top: 4px; }

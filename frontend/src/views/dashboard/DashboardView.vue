@@ -23,7 +23,16 @@ function handleAgentCreated(id: number) {
 <template>
   <div class="dashboard-page">
     <div class="welcome-section">
-      <h2>👋 欢迎回来</h2>
+      <h2>
+        <svg class="ii" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+          <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
+          <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+          <path d="M4 9c-.6-1-.6-2.4 0-3.6" />
+        </svg>
+        欢迎回来
+      </h2>
       <p class="text-muted">管理你的 AI Agent，查看运行状态</p>
     </div>
 

@@ -104,6 +104,11 @@ export interface CreateAgentDTO {
   avatar: string
   tags: string[]
   status: AgentStatus
+  /** 模型配置（创建向导第 2 步采集，后端创建时一并落库） */
+  modelProvider?: string
+  modelName?: string
+  temperature?: number
+  maxTokens?: number
 }
 
 export interface UpdateAgentDTO {
