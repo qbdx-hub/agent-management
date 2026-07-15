@@ -1,21 +1,23 @@
 package com.agentmanagement.controller;
 
 import com.agentmanagement.common.Result;
+import com.agentmanagement.entity.AuditLog;
 import com.agentmanagement.entity.Document;
 import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.form.KnowledgeBaseCreateForm;
+import com.agentmanagement.service.AuditLogService;
 import com.agentmanagement.service.DocumentService;
 import com.agentmanagement.service.KnowledgeBaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 
 /**
  * 知识库 + 文档接口（前缀 /api/v1 由 context-path 统一加）。
- * 合并到同一 Controller 避免路径冲突。
  */
 @RestController
 @RequestMapping("/knowledge-bases")
@@ -27,6 +29,9 @@ public class KnowledgeBaseController {
     @Autowired
     private DocumentService documentService;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     // ==================== 知识库接口 ====================
 
     /**
@@ -36,8 +41,19 @@ public class KnowledgeBaseController {
     public Result<KnowledgeBase> create(
             @Valid @RequestBody KnowledgeBaseCreateForm form,
             @RequestHeader("X-Workspace-Id") Long workspaceId,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId) {
-        return Result.success(knowledgeBaseService.create(form, userId, workspaceId));
+            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
+            @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
+            HttpServletRequest request) {
+        KnowledgeBase kb = knowledgeBaseService.create(form, userId, workspaceId);
+
+        // 记录审计日志
+        auditLogService.log(workspaceId, userId, userName,
+                "knowledge.create", "创建知识库",
+                "knowledge_base", kb.getId(), kb.getName(),
+                "创建知识库: " + kb.getName(), "success",
+                getClientIp(request), request.getHeader("User-Agent"));
+
+        return Result.success(kb);
     }
 
     /**
@@ -65,8 +81,23 @@ public class KnowledgeBaseController {
     @DeleteMapping("/{id}")
     public Result<Void> delete(
             @PathVariable Long id,
-            @RequestHeader("X-Workspace-Id") Long workspaceId) {
+            @RequestHeader("X-Workspace-Id") Long workspaceId,
+            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
+            @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
+            HttpServletRequest request) {
+        // 先查询知识库名称用于日志记录
+        KnowledgeBase kb = knowledgeBaseService.getByIdChecked(id, workspaceId);
+        String kbName = kb.getName();
+
         knowledgeBaseService.deleteById(id, workspaceId);
+
+        // 记录审计日志
+        auditLogService.log(workspaceId, userId, userName,
+                "knowledge.delete", "删除知识库",
+                "knowledge_base", id, kbName,
+                "删除知识库: " + kbName + "（级联删除文档）", "success",
+                getClientIp(request), request.getHeader("User-Agent"));
+
         return Result.success();
     }
 
@@ -82,15 +113,25 @@ public class KnowledgeBaseController {
 
     /**
      * POST /api/v1/knowledge-bases/{kbId}/documents —— 上传文档。
-     * Content-Type: multipart/form-data
-     * 字段名: file
      */
     @PostMapping("/{kbId}/documents")
     public Result<Document> uploadDocument(
             @PathVariable Long kbId,
             @RequestParam("file") MultipartFile file,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId) {
-        return Result.success(documentService.upload(kbId, file, userId));
+            @RequestHeader("X-Workspace-Id") Long workspaceId,
+            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
+            @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
+            HttpServletRequest request) {
+        Document doc = documentService.upload(kbId, file, userId);
+
+        // 记录审计日志
+        auditLogService.log(workspaceId, userId, userName,
+                "document.upload", "上传文档",
+                "document", doc.getId(), doc.getName(),
+                "上传文档到知识库[" + kbId + "]: " + doc.getName(), "success",
+                getClientIp(request), request.getHeader("User-Agent"));
+
+        return Result.success(doc);
     }
 
     /**
@@ -99,8 +140,40 @@ public class KnowledgeBaseController {
     @DeleteMapping("/{kbId}/documents/{docId}")
     public Result<Void> deleteDocument(
             @PathVariable Long kbId,
-            @PathVariable Long docId) {
+            @PathVariable Long docId,
+            @RequestHeader("X-Workspace-Id") Long workspaceId,
+            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
+            @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
+            HttpServletRequest request) {
         documentService.deleteById(docId, kbId);
+
+        // 记录审计日志
+        auditLogService.log(workspaceId, userId, userName,
+                "document.delete", "删除文档",
+                "document", docId, null,
+                "从知识库[" + kbId + "]删除文档[" + docId + "]", "success",
+                getClientIp(request), request.getHeader("User-Agent"));
+
         return Result.success();
+    }
+
+    // ==================== 工具方法 ====================
+
+    /**
+     * 获取客户端真实 IP
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 多级代理时取第一个
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

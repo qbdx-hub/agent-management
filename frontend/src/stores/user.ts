@@ -29,6 +29,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = res.data.token
       user.value = res.data.user
       localStorage.setItem('token', res.data.token)
+      localStorage.setItem('userName', res.data.user.username || username)
     }
   }
 
@@ -43,6 +44,7 @@ export const useUserStore = defineStore('user', () => {
     user.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('workspaceId')
+    localStorage.removeItem('userName')
     window.location.href = '/login'
   }
 
