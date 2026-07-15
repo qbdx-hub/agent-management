@@ -126,7 +126,7 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
 
     /**
      * 保存文件到磁盘，返回相对路径
-     * 目录结构: uploads/{kbId}/{yyyyMMdd}/{uuid}.{ext}
+     * 目录结构: {kbId}/{yyyyMMdd}/{uuid}.{ext}
      */
     private String saveFile(MultipartFile file, Long kbId) {
         String ext = getFileExtension(file.getOriginalFilename());
@@ -134,16 +134,23 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         String uuid = UUID.randomUUID().toString().replace("-", "");
         String relativePath = kbId + "/" + dateStr + "/" + uuid + "." + ext;
 
-        File dest = new File(uploadDir, relativePath);
+        // 使用绝对路径，避免 Windows 相对路径问题
+        File baseDir = new File(uploadDir).getAbsoluteFile();
+        File dest = new File(baseDir, relativePath);
+
         // 确保父目录存在
         if (!dest.getParentFile().exists()) {
             dest.getParentFile().mkdirs();
         }
 
         try {
-            file.transferTo(dest);
+            // 使用字节流写入，避免 transferTo 的编码问题
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(dest);
+            fos.write(file.getBytes());
+            fos.close();
+            log.info("文件保存成功: {}", dest.getAbsolutePath());
         } catch (IOException e) {
-            log.error("文件保存失败: {}", relativePath, e);
+            log.error("文件保存失败: {}", dest.getAbsolutePath(), e);
             throw new BusinessException(500, "文件保存失败");
         }
 

@@ -35,4 +35,12 @@ public interface KnowledgeBaseService extends IService<KnowledgeBase> {
      * @throws com.agentmanagement.common.BusinessException 知识库不存在或不属于当前工作空间
      */
     KnowledgeBase getByIdChecked(Long id, Long workspaceId);
+
+    /**
+     * 删除知识库：级联删除关联文档 → 删除知识库记录。
+     *
+     * @param id          知识库 ID
+     * @param workspaceId 当前工作空间 ID（校验归属）
+     */
+    void deleteById(Long id, Long workspaceId);
 }

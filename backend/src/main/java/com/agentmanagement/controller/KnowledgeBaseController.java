@@ -59,6 +59,17 @@ public class KnowledgeBaseController {
         return Result.success(knowledgeBaseService.getByIdChecked(id, workspaceId));
     }
 
+    /**
+     * DELETE /api/v1/knowledge-bases/{id} —— 删除知识库（级联删除文档）。
+     */
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(
+            @PathVariable Long id,
+            @RequestHeader("X-Workspace-Id") Long workspaceId) {
+        knowledgeBaseService.deleteById(id, workspaceId);
+        return Result.success();
+    }
+
     // ==================== 文档接口 ====================
 
     /**

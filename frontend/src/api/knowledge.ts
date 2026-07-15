@@ -180,6 +180,14 @@ export async function getKnowledgeBase(id: number): Promise<ApiResponse<Knowledg
   return res.data
 }
 
+/**
+ * DELETE /knowledge-bases/:id —— 删除知识库（级联删除文档）
+ */
+export async function deleteKnowledgeBase(id: number): Promise<ApiResponse<null>> {
+  const res = await http.delete<ApiResponse<null>>(`/knowledge-bases/${id}`)
+  return res.data
+}
+
 // ==================== 文档接口 ====================
 
 /**

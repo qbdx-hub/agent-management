@@ -2,7 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDateTime } from '@/utils/format'
-import { listKnowledgeBases } from '@/api/knowledge'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listKnowledgeBases, deleteKnowledgeBase } from '@/api/knowledge'
 import type { KnowledgeBase } from '@/api/knowledge'
 
 const router = useRouter()
@@ -16,8 +17,8 @@ async function loadList() {
     if (res.code === 0) {
       knowledgeBases.value = res.data || []
     }
-  } catch {
-    // 错误已由 http 拦截器统一提示
+  } catch (err: any) {
+    ElMessage.error(err?.message || '加载知识库列表失败')
   } finally {
     loading.value = false
   }
@@ -33,6 +34,31 @@ function handleCreate() {
 
 function goToDetail(id: number) {
   router.push(`/knowledge/${id}`)
+}
+
+async function handleDelete(kb: KnowledgeBase, event: Event) {
+  // 阻止卡片点击事件
+  event.stopPropagation()
+
+  try {
+    await ElMessageBox.confirm(
+      `确定删除知识库"${kb.name}"吗？删除后将同时清除所有关联文档，且不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    const res = await deleteKnowledgeBase(kb.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      knowledgeBases.value = knowledgeBases.value.filter(item => item.id !== kb.id)
+    }
+  } catch (err: any) {
+    ElMessage.error(err?.message || '删除失败')
+  }
 }
 </script>
 
@@ -52,10 +78,18 @@ function goToDetail(id: number) {
       >
         <div class="kb-header">
           <span class="kb-icon">📚</span>
-          <div>
+          <div style="flex:1">
             <div class="kb-name">{{ kb.name }}</div>
             <div class="text-muted" style="font-size:12px">{{ kb.description || '暂无描述' }}</div>
           </div>
+          <el-button
+            type="danger"
+            text
+            size="small"
+            @click="handleDelete(kb, $event)"
+          >
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
         <div class="kb-meta">
           <span>📄 {{ kb.documentCount }} 文档</span>
