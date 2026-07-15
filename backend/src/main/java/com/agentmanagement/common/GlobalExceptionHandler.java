@@ -55,6 +55,9 @@ public class GlobalExceptionHandler {
         if (msg.contains("uk_email")) {
             return Result.error(ResultCode.EMAIL_EXISTS);
         }
+        if (msg.contains("uk_kb_name")) {
+            return Result.error(ResultCode.KB_NAME_EXISTS);
+        }
         log.warn("唯一约束冲突: {}", msg);
         return Result.error(ResultCode.PARAM_ERROR.getCode(), "数据已存在，请刷新后重试");
     }
