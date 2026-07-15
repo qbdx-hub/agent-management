@@ -2,8 +2,10 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const form = reactive({
   username: '',
@@ -40,22 +42,35 @@ async function handleRegister() {
     ElMessage.warning('请填写完整信息')
     return
   }
+  if (!/^[a-zA-Z0-9_-]{3,50}$/.test(form.username)) {
+    ElMessage.warning('用户名只能包含字母、数字、下划线、短横线，长度3-50')
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    ElMessage.warning('邮箱格式不正确')
+    return
+  }
   if (form.password !== form.confirmPassword) {
     ElMessage.warning('两次密码不一致')
     return
   }
-  if (form.password.length < 6) {
-    ElMessage.warning('密码至少6位')
+  if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*._-]{8,50}$/.test(form.password)) {
+    ElMessage.warning('密码需8-50位且包含字母和数字')
     return
   }
 
   loading.value = true
   try {
-    await new Promise(r => setTimeout(r, 1000))
+    await userStore.register({
+      username: form.username,
+      nickname: form.nickname,
+      email: form.email,
+      password: form.password,
+    })
     step.value = 2
     ElMessage.success('注册成功')
   } catch {
-    ElMessage.error('注册失败')
+    // 响应拦截器已弹出具体错误（如"用户名已被注册"），此处无需重复提示
   } finally {
     loading.value = false
   }
@@ -113,7 +128,7 @@ function goToLogin() {
             <el-input
               v-model="form.password"
               type="password"
-              placeholder="密码（至少6位）"
+              placeholder="密码（至少8位，含字母和数字）"
               size="large"
               show-password
               @input="checkPasswordStrength"

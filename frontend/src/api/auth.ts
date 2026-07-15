@@ -29,6 +29,22 @@ export async function login(username: string, password: string): Promise<ApiResp
   return res.data
 }
 
+export interface RegisterPayload {
+  username: string
+  nickname: string
+  email: string
+  password: string
+}
+
+/** POST /auth/register —— 注册成功无返回体（后端 data:null） */
+export async function register(payload: RegisterPayload): Promise<ApiResponse<null>> {
+  if (USE_MOCK) {
+    return { code: 0, message: 'ok', data: null }
+  }
+  const res = await http.post<ApiResponse<null>>('/auth/register', payload)
+  return res.data
+}
+
 export async function getCurrentUser(): Promise<ApiResponse<LoginResponse['user']>> {
   if (USE_MOCK) {
     const { data } = await login('', '')

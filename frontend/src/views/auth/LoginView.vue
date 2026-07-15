@@ -20,7 +20,11 @@ async function handleLogin() {
   loading.value = true
   try {
     await userStore.login(form.username, form.password)
-    await wsStore.fetchMyWorkspaces()
+    // 登录响应已返回 workspaces，直接选第一个为默认空间；
+    // 不调 fetchMyWorkspaces（后端尚未实现该接口，避免 404 阻塞跳转）
+    if (!wsStore.currentId && userStore.workspaces.length > 0) {
+      wsStore.switchWorkspace(userStore.workspaces[0].id)
+    }
     ElMessage.success('登录成功')
     router.push('/dashboard')
   } catch {

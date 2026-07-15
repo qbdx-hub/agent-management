@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, getCurrentUser } from '@/api/auth'
+import { login as loginApi, getCurrentUser, register as registerApi } from '@/api/auth'
 import type { UserInfo } from '@/types/workspace'
 import { ElMessage } from 'element-plus'
 
@@ -32,6 +32,12 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  /** 注册：成功返回 true；失败时 http 拦截器已 reject 并弹错，调用方 catch 即可 */
+  async function register(payload: { username: string; nickname: string; email: string; password: string }) {
+    const res = await registerApi(payload)
+    return res.code === 0
+  }
+
   function logout() {
     token.value = ''
     user.value = null
@@ -60,5 +66,5 @@ export const useUserStore = defineStore('user', () => {
     })
   }
 
-  return { user, token, isLoggedIn, permissions, workspaces, login, logout, fetchUserInfo, hasPermission }
+  return { user, token, isLoggedIn, permissions, workspaces, login, register, logout, fetchUserInfo, hasPermission }
 })
