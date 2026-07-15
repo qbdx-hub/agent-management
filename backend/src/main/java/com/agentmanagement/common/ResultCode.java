@@ -25,9 +25,17 @@ public enum ResultCode {
     USERNAME_EXISTS(1006, "用户名已被注册"),
     /** 邮箱已被注册 */
     EMAIL_EXISTS(1007, "邮箱已被注册"),
+    /** 缺少工作空间上下文（前端未带 X-Workspace-Id 头） */
+    WORKSPACE_REQUIRED(1008, "缺少工作空间上下文"),
 
     // ===== 业务错误 2xxx（后续模块扩展） =====
-    DATA_NOT_FOUND(2001, "数据不存在");
+    DATA_NOT_FOUND(2001, "数据不存在"),
+    /** Agent 不存在或不属于当前工作空间 */
+    AGENT_NOT_FOUND(2002, "Agent不存在"),
+    /** 工具不存在或不属于当前工作空间 */
+    TOOL_NOT_FOUND(2003, "工具不存在"),
+    /** Agent 状态值非法（不在 draft/testing/published/paused/archived 范围内） */
+    AGENT_STATUS_INVALID(2004, "Agent状态非法");
 
     private final Integer code;
     private final String message;

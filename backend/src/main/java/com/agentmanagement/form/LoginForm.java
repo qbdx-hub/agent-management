@@ -10,7 +10,10 @@ import javax.validation.constraints.NotBlank;
 @Data
 public class LoginForm {
 
-    @NotBlank(message = "用户名不能为空")
+    /**
+     * 登录账号：可填用户名或邮箱（字段名沿用 username 以兼容前端契约，后端按是否含 @ 分流查询）
+     */
+    @NotBlank(message = "账号不能为空")
     private String username;
 
     @NotBlank(message = "密码不能为空")

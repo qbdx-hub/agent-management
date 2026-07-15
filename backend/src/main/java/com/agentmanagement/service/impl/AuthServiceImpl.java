@@ -73,9 +73,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginVO login(LoginForm form) {
-        // 1. 按用户名查用户
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, form.getUsername()));
+        // 1. 按用户名或邮箱查用户：含 @ 视为按邮箱查（username 正则 [a-zA-Z0-9_-] 不含 @，二者互斥）
+        String account = form.getUsername();
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>();
+        if (account.contains("@")) {
+            queryWrapper.eq(User::getEmail, account);
+        } else {
+            queryWrapper.eq(User::getUsername, account);
+        }
+        User user = userMapper.selectOne(queryWrapper);
         if (user == null) {
             // 用户不存在与密码错用同一文案，防止用户名枚举
             throw new BusinessException(ResultCode.LOGIN_FAILED);
