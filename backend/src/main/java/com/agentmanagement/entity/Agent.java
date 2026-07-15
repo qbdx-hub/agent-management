@@ -63,9 +63,9 @@ public class Agent implements Serializable {
 
     private String systemPrompt;
 
-    /** 提示词变量 JSON（key-value） */
+    /** 提示词变量 JSON 数组（每项 {name,label,type,options,defaultValue,required}） */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private Map<String, Object> promptVariables;
+    private List<Map<String, Object>> promptVariables;
 
     // ============ 记忆配置 ============
 
