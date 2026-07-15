@@ -38,8 +38,8 @@ public class WorkflowEdge implements Serializable {
 
     private String label;
 
-    /** 条件表达式 JSON */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    /** 条件表达式 JSON（condition 是 MySQL 保留字，列名需反引号转义，否则生成的 SQL 语法错误） */
+    @TableField(value = "`condition`", typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> condition;
 
     private LocalDateTime createdAt;

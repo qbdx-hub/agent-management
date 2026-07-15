@@ -39,7 +39,8 @@ public class AlertRule implements Serializable {
     /** 目标 ID（NULL=整个工作空间） */
     private Long targetId;
 
-    /** 条件：lt/gt/lte/gte */
+    /** 条件：lt/gt/lte/gte（condition 是 MySQL 保留字，列名需反引号转义） */
+    @TableField(value = "`condition`")
     private String condition;
 
     /** 阈值 */

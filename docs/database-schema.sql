@@ -490,7 +490,7 @@ CREATE TABLE IF NOT EXISTS `approval_rule` (
   `description` VARCHAR(500) DEFAULT NULL COMMENT '描述',
   `resource_type` VARCHAR(50) NOT NULL COMMENT '资源类型: agent/tool',
   `trigger_action` VARCHAR(50) NOT NULL COMMENT '触发操作: publish/register/delete',
-  `trigger_condition` VARCHAR(500) DEFAULT NULL COMMENT '触发条件JSON',
+  `trigger_condition` JSON DEFAULT NULL COMMENT '触发条件JSON',
   `approver_role` VARCHAR(50) NOT NULL COMMENT '审批角色',
   `required_approvals` INT DEFAULT 1 COMMENT '所需审批人数',
   `enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用',
