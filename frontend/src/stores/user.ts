@@ -52,6 +52,7 @@ export const useUserStore = defineStore('user', () => {
     const res = await getCurrentUser()
     if (res.code === 0) {
       user.value = res.data as UserState['user']
+      localStorage.setItem('userName', res.data.username || '')
     }
   }
 

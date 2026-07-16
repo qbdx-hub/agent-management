@@ -3,13 +3,13 @@ package com.agentmanagement.controller;
 import com.agentmanagement.common.Result;
 import com.agentmanagement.form.LoginForm;
 import com.agentmanagement.form.RegisterForm;
+import com.agentmanagement.form.UserProfileForm;
 import com.agentmanagement.service.AuthService;
 import com.agentmanagement.vo.LoginVO;
+import com.agentmanagement.vo.UserVO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 
@@ -33,6 +33,21 @@ public class AuthController {
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody RegisterForm form) {
         authService.register(form);
+        return Result.success();
+    }
+
+    /** GET /api/v1/auth/me —— 获取当前登录用户信息 */
+    @GetMapping("/me")
+    public Result<UserVO> getCurrentUser() {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return Result.success(authService.getCurrentUser(userId));
+    }
+
+    /** PUT /api/v1/auth/profile —— 修改当前用户个人信息（用户名、昵称、邮箱、密码） */
+    @PutMapping("/profile")
+    public Result<Void> updateProfile(@Valid @RequestBody UserProfileForm form) {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        authService.updateProfile(userId, form);
         return Result.success();
     }
 }

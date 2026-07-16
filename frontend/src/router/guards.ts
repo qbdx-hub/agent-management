@@ -13,6 +13,17 @@ export function setupGuards(router: Router) {
       return next('/login')
     }
 
+    // 1.5 已登录但 user 信息未加载（页面刷新后 token 在 localStorage 但 user 为 null）
+    if (userStore.isLoggedIn && !userStore.user) {
+      try {
+        await userStore.fetchUserInfo()
+      } catch {
+        // 获取用户信息失败（token 过期等），强制登出
+        userStore.logout()
+        return next('/login')
+      }
+    }
+
     // 2. 工作空间检查（仅已登录用户需要；dashboard/空间设置页允许无空间进入）。
     //    关键：未登录用户（含访问 /register）不进此分支，避免触发鉴权请求 -> 401 -> 被拦截器弹回 /login
     const wsExemptPaths = ['/workspace/settings', '/dashboard']

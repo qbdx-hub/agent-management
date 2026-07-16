@@ -3,7 +3,7 @@
 export type CostPeriod = 'today' | 'this_month' | 'last_month'
 export type CostDimension = 'model' | 'agent' | 'member'
 export type BudgetPeriod = 'daily' | 'monthly'
-export type BudgetScope = 'workspace' | 'user' | 'agent'
+export type BudgetScope = 'global' | 'workspace' | 'user' | 'agent'
 
 export interface CostOverview {
   totalCost: number
@@ -37,9 +37,13 @@ export interface BudgetConfig {
   scopeId: number | null
   period: BudgetPeriod
   limit: number
+  currentAmount: number
   warnPercent: number
   meltdownEnabled: boolean
   notifyChannels: string[]
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CostRecord {

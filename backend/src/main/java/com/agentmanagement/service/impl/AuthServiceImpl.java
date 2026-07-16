@@ -9,6 +9,7 @@ import com.agentmanagement.entity.Workspace;
 import com.agentmanagement.entity.WorkspaceMember;
 import com.agentmanagement.form.LoginForm;
 import com.agentmanagement.form.RegisterForm;
+import com.agentmanagement.form.UserProfileForm;
 import com.agentmanagement.mapper.RoleMapper;
 import com.agentmanagement.mapper.UserMapper;
 import com.agentmanagement.mapper.UserRoleMapper;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -252,6 +254,82 @@ public class AuthServiceImpl implements AuthService {
             result.add(brief);
         }
         return result;
+    }
+
+    @Override
+    public UserVO getCurrentUser(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND, "用户不存在");
+        }
+        Role primaryRole = loadPrimaryRole(user.getId());
+        List<String> permissions = (primaryRole != null && primaryRole.getPermissions() != null)
+                ? primaryRole.getPermissions() : Collections.<String>emptyList();
+        String roleCode = mapRoleNameToCode(primaryRole);
+        List<WorkspaceBriefVO> workspaces = loadWorkspaces(user.getId());
+
+        UserVO userVO = new UserVO();
+        userVO.setId(user.getId());
+        userVO.setUsername(user.getUsername());
+        userVO.setNickname(user.getNickname());
+        userVO.setAvatar(user.getAvatar() == null ? "" : user.getAvatar());
+        userVO.setEmail(user.getEmail());
+        userVO.setRole(roleCode);
+        userVO.setPermissions(permissions);
+        userVO.setWorkspaces(workspaces);
+        return userVO;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateProfile(Long userId, UserProfileForm form) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND, "用户不存在");
+        }
+
+        // 用户名变更唯一性校验（排除自身）
+        if (!user.getUsername().equals(form.getUsername())) {
+            Long count = userMapper.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getUsername, form.getUsername())
+                            .ne(User::getId, userId));
+            if (count != null && count > 0) {
+                throw new BusinessException(ResultCode.USERNAME_EXISTS);
+            }
+        }
+
+        // 邮箱变更唯一性校验（排除自身）
+        if (StringUtils.hasText(form.getEmail()) && !form.getEmail().equals(user.getEmail())) {
+            Long count = userMapper.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getEmail, form.getEmail())
+                            .ne(User::getId, userId));
+            if (count != null && count > 0) {
+                throw new BusinessException(ResultCode.EMAIL_EXISTS);
+            }
+        }
+
+        // 密码修改：必须提供旧密码并校验
+        if (StringUtils.hasText(form.getNewPassword())) {
+            if (!StringUtils.hasText(form.getOldPassword())
+                    || !passwordEncoder.matches(form.getOldPassword(), user.getPassword())) {
+                throw new BusinessException(ResultCode.OLD_PASSWORD_WRONG);
+            }
+        }
+
+        User update = new User();
+        update.setId(userId);
+        update.setUsername(form.getUsername());
+        update.setNickname(form.getNickname());
+        if (StringUtils.hasText(form.getEmail())) {
+            update.setEmail(form.getEmail());
+        }
+        if (StringUtils.hasText(form.getNewPassword())) {
+            update.setPassword(passwordEncoder.encode(form.getNewPassword()));
+        }
+        update.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(update);
     }
 
     /** 格式化为 ISO 8601 带时区：2026-07-21T10:30:00+08:00（前端 new Date() 可解析） */

@@ -1,25 +1,74 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { mockMonitorOverview, mockTokenTrend, mockAgentHealth, mockErrors, mockAlertRecords } from '@/mock/monitor'
+import { getMonitorOverview, getTokenTrend, getAgentHealth, getErrorLogs, getAlertRecords } from '@/api/monitor'
 import { formatPercent, formatLatency, formatTokens, formatNumber } from '@/utils/format'
 import { ALERT_SEVERITY_MAP } from '@/utils/constants'
+import type { MonitorOverview, TokenTrendPoint, AgentHealthItem, ErrorLogItem, AlertRecord } from '@/types/monitor'
 
 const router = useRouter()
-const overview = ref(mockMonitorOverview)
-const tokenTrend = ref(mockTokenTrend)
-const agentHealth = ref(mockAgentHealth)
-const errors = ref(mockErrors)
-const alerts = ref(mockAlertRecords)
+const loading = ref(false)
+const overview = ref<MonitorOverview>({
+  activeAgentCount: 0, runningTaskCount: 0, todayCallCount: 0,
+  successRate: 0, avgLatencyMs: 0, p99LatencyMs: 0, totalTokensToday: 0,
+  trends: { callCountChange: 0, successRateChange: 0, latencyChange: 0 }
+})
+const tokenTrend = ref<TokenTrendPoint[]>([])
+const agentHealth = ref<AgentHealthItem[]>([])
+const errors = ref<ErrorLogItem[]>([])
+const alerts = ref<AlertRecord[]>([])
 const period = ref('today')
 
 function healthColor(status: string) {
   return status === 'healthy' ? '#67c23a' : status === 'warning' ? '#e6a23c' : '#f56c6c'
 }
+
+async function loadData() {
+  loading.value = true
+  try {
+    // 加载概览
+    const overviewRes = await getMonitorOverview(period.value)
+    if (overviewRes.code === 0 && overviewRes.data) {
+      overview.value = overviewRes.data
+    }
+
+    // 加载 Token 趋势
+    const granularity = period.value === 'today' ? 'hour' : 'day'
+    const trendRes = await getTokenTrend(period.value === 'today' ? '7d' : period.value, granularity)
+    if (trendRes.code === 0 && trendRes.data) {
+      tokenTrend.value = trendRes.data.series || []
+    }
+
+    // 加载 Agent 健康排行
+    const healthRes = await getAgentHealth()
+    if (healthRes.code === 0 && healthRes.data) {
+      agentHealth.value = healthRes.data
+    }
+
+    // 加载错误日志
+    const errorRes = await getErrorLogs({ page: 1, pageSize: 10 })
+    if (errorRes.code === 0 && errorRes.data) {
+      errors.value = (errorRes.data as any).list || errorRes.data as ErrorLogItem[]
+    }
+
+    // 加载告警记录
+    const alertRes = await getAlertRecords({ page: 1, pageSize: 5 })
+    if (alertRes.code === 0 && alertRes.data) {
+      alerts.value = (alertRes.data as any).list || alertRes.data as AlertRecord[]
+    }
+  } catch (e) {
+    console.error('加载监控数据失败', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
+watch(period, loadData)
 </script>
 
 <template>
-  <div class="monitor-page">
+  <div class="monitor-page" v-loading="loading">
     <div class="page-header">
       <h2>监控面板</h2>
       <div style="display:flex;gap:8px">
@@ -67,13 +116,13 @@ function healthColor(status: string) {
       <!-- Token 趋势 -->
       <el-col :span="16">
         <el-card class="mb-24">
-          <template #header><span>Token 用量趋势 (24h)</span></template>
+          <template #header><span>Token 用量趋势</span></template>
           <div class="chart-placeholder">
             <div class="bar-chart">
-              <div v-for="(point, idx) in tokenTrend.slice(0, 24)" :key="idx" class="bar-col">
-                <div class="bar-input" :style="{ height: (point.input / 35000 * 120) + 'px' }" title="Input"></div>
-                <div class="bar-output" :style="{ height: (point.output / 35000 * 120) + 'px' }" title="Output"></div>
-                <div class="bar-label">{{ point.time.split(':')[0] }}h</div>
+              <div v-for="(point, idx) in tokenTrend" :key="idx" class="bar-col">
+                <div class="bar-input" :style="{ height: (point.input / maxToken * 120) + 'px' }" title="Input"></div>
+                <div class="bar-output" :style="{ height: (point.output / maxToken * 120) + 'px' }" title="Output"></div>
+                <div class="bar-label">{{ point.time }}</div>
               </div>
             </div>
             <div class="chart-legend">
@@ -88,6 +137,7 @@ function healthColor(status: string) {
       <el-col :span="8">
         <el-card class="mb-24">
           <template #header><span>Agent 健康排行</span></template>
+          <div v-if="agentHealth.length === 0" class="text-muted" style="text-align:center;padding:20px">暂无数据</div>
           <div v-for="agent in agentHealth" :key="agent.agentId" class="health-item">
             <div class="health-header">
               <span class="health-name">{{ agent.agentName }}</span>
@@ -105,27 +155,41 @@ function healthColor(status: string) {
       <el-col :span="12">
         <el-card>
           <template #header><span>最近告警</span></template>
+          <div v-if="alerts.length === 0" class="text-muted" style="text-align:center;padding:20px">暂无告警</div>
           <div v-for="alert in alerts" :key="alert.recordId" class="alert-item">
             <el-tag :type="alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'" size="small">{{ ALERT_SEVERITY_MAP[alert.severity] }}</el-tag>
             <span class="alert-msg">{{ alert.message }}</span>
-            <span class="text-muted" style="font-size:12px;white-space:nowrap">{{ alert.triggeredAt.split('T')[1]?.slice(0,5) }}</span>
+            <span class="text-muted" style="font-size:12px;white-space:nowrap">{{ alert.triggeredAt?.split('T')[1]?.slice(0,5) }}</span>
           </div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card>
           <template #header><span>错误日志</span></template>
-          <el-table :data="errors" size="small">
+          <div v-if="errors.length === 0" class="text-muted" style="text-align:center;padding:20px">暂无错误</div>
+          <el-table v-else :data="errors" size="small">
             <el-table-column prop="agentName" label="Agent" width="130" />
             <el-table-column prop="errorType" label="类型" width="100" />
             <el-table-column prop="errorMessage" label="错误信息" show-overflow-tooltip />
-            <el-table-column label="时间" width="80"><template #default="{ row }">{{ row.occurredAt.split('T')[1]?.slice(0,5) }}</template></el-table-column>
+            <el-table-column label="时间" width="80"><template #default="{ row }">{{ row.occurredAt?.split('T')[1]?.slice(0,5) }}</template></el-table-column>
           </el-table>
         </el-card>
       </el-col>
     </el-row>
   </div>
 </template>
+
+<script lang="ts">
+// 计算最大 token 值用于图表高度
+export default {
+  computed: {
+    maxToken(): number {
+      const all = this.tokenTrend.flatMap(p => [p.input, p.output])
+      return Math.max(...all, 1)
+    }
+  }
+}
+</script>
 
 <style scoped>
 .monitor-page { max-width: 1400px; }

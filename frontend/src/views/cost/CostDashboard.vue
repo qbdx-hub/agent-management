@@ -1,21 +1,45 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { mockCostOverview, mockCostByModel, mockCostByAgent, mockCostTrend, mockCostRecords } from '@/mock/cost'
-import { formatCost, formatPercent, formatNumber, formatTokens, formatDateTime } from '@/utils/format'
+import { ElMessage } from 'element-plus'
+import { getCostOverview } from '@/api/cost'
+import { mockCostByModel, mockCostByAgent, mockCostTrend, mockCostRecords } from '@/mock/cost'
+import { formatCost, formatPercent, formatTokens, formatDateTime } from '@/utils/format'
+import type { CostOverview } from '@/types/cost'
 
 const router = useRouter()
-const overview = ref(mockCostOverview)
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+
+const overview = ref<CostOverview>({
+  totalCost: 0, budgetLimit: 0, budgetRemaining: 0,
+  budgetPercent: 0, todayCost: 0, yesterdayCost: 0,
+  projectedMonthCost: 0, meltdownStatus: 'normal',
+})
 const byModel = ref(mockCostByModel)
 const byAgent = ref(mockCostByAgent)
 const trend = ref(mockCostTrend)
 const records = ref(mockCostRecords)
+const loading = ref(false)
 
 function barColor(percent: number) {
   if (percent > 90) return '#f56c6c'
   if (percent > 70) return '#e6a23c'
   return '#67c23a'
 }
+
+async function loadData() {
+  loading.value = true
+  try {
+    const res = await getCostOverview('this_month')
+    overview.value = res.data ?? overview.value
+  } catch (e: any) {
+    if (!USE_MOCK) ElMessage.error(e.message || '加载成本概览失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
 </script>
 
 <template>
@@ -26,7 +50,7 @@ function barColor(percent: number) {
     </div>
 
     <!-- 概览卡片 -->
-    <div class="stats-row">
+    <div class="stats-row" v-loading="loading">
       <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.totalCost) }}</div><div class="cost-lbl">本月总花费</div></el-card>
       <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.budgetRemaining) }}</div><div class="cost-lbl">预算剩余</div></el-card>
       <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.todayCost) }}</div><div class="cost-lbl">今日花费</div></el-card>
@@ -37,7 +61,7 @@ function barColor(percent: number) {
     <el-card class="mb-24">
       <div style="display:flex;align-items:center;gap:16px">
         <span style="white-space:nowrap">预算使用</span>
-        <el-progress :percentage="overview.budgetPercent" :color="barColor(overview.budgetPercent)" style="flex:1" />
+        <el-progress :percentage="Number(overview.budgetPercent)" :color="barColor(Number(overview.budgetPercent))" style="flex:1" />
         <span class="text-muted">{{ formatCost(overview.totalCost) }} / {{ formatCost(overview.budgetLimit) }}</span>
       </div>
     </el-card>

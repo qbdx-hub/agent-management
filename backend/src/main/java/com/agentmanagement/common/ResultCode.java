@@ -27,6 +27,8 @@ public enum ResultCode {
     EMAIL_EXISTS(1007, "邮箱已被注册"),
     /** 缺少工作空间上下文（前端未带 X-Workspace-Id 头） */
     WORKSPACE_REQUIRED(1008, "缺少工作空间上下文"),
+    /** 旧密码错误 */
+    OLD_PASSWORD_WRONG(1009, "旧密码错误"),
 
     // ===== 业务错误 2xxx（后续模块扩展） =====
     DATA_NOT_FOUND(2001, "数据不存在"),

@@ -26,15 +26,29 @@ export async function getCostTrend(period: string = '30d', granularity: string =
   return res.data
 }
 
+// ==================== 预算配置 ====================
+
 export async function getBudgets(): Promise<ApiResponse<BudgetConfig[]>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: mockBudgets }
   const res = await http.get<ApiResponse<BudgetConfig[]>>('/cost/budgets')
   return res.data
 }
 
-export async function createBudget(data: Omit<BudgetConfig, 'id'>): Promise<ApiResponse<BudgetConfig>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: { ...data, id: Date.now() } }
-  const res = await http.post<ApiResponse<BudgetConfig>>('/cost/budgets', data)
+export async function createBudget(data: Omit<BudgetConfig, 'id' | 'currentAmount' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<BudgetConfig>> {
+  if (USE_MOCK) return { code: 0, message: 'ok', data: { ...data, id: Date.now(), currentAmount: 0, createdAt: '', updatedAt: '' } as BudgetConfig }
+  // 前端字段 limit → 后端字段 limitAmount 的映射
+  const payload = { ...data, limitAmount: data.limit }
+  const res = await http.post<ApiResponse<BudgetConfig>>('/cost/budgets', payload)
+  return res.data
+}
+
+export async function toggleBudget(id: number, enabled: boolean): Promise<ApiResponse<BudgetConfig>> {
+  if (USE_MOCK) {
+    const budget = mockBudgets.find(b => b.id === id)
+    if (budget) budget.enabled = enabled
+    return { code: 0, message: 'ok', data: budget as BudgetConfig }
+  }
+  const res = await http.put<ApiResponse<BudgetConfig>>(`/cost/budgets/${id}/status`, null, { params: { enabled: enabled ? 1 : 0 } })
   return res.data
 }
 

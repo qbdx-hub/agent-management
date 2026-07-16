@@ -54,8 +54,19 @@ export async function getCurrentUser(): Promise<ApiResponse<LoginResponse['user'
   return res.data
 }
 
-export async function changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<null>> {
-  if (USE_MOCK) return { code: 0, message: '修改成功', data: null }
-  const res = await http.put<ApiResponse<null>>('/auth/password', { oldPassword, newPassword })
+export interface ProfilePayload {
+  username: string
+  nickname: string
+  email?: string
+  oldPassword?: string
+  newPassword?: string
+}
+
+/** PUT /auth/profile —— 修改当前用户个人信息（用户名、昵称、邮箱、密码） */
+export async function updateProfile(payload: ProfilePayload): Promise<ApiResponse<null>> {
+  if (USE_MOCK) {
+    return { code: 0, message: '修改成功', data: null }
+  }
+  const res = await http.put<ApiResponse<null>>('/auth/profile', payload)
   return res.data
 }
