@@ -2,23 +2,21 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getCostOverview } from '@/api/cost'
-import { mockCostByModel, mockCostByAgent, mockCostTrend, mockCostRecords } from '@/mock/cost'
+import { getCostOverview, getCostBreakdown, getCostTrend, getCostRecords } from '@/api/cost'
 import { formatCost, formatPercent, formatTokens, formatDateTime } from '@/utils/format'
-import type { CostOverview } from '@/types/cost'
+import type { CostOverview, CostBreakdownItem, CostTrendPoint, CostRecord } from '@/types/cost'
 
 const router = useRouter()
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const overview = ref<CostOverview>({
   totalCost: 0, budgetLimit: 0, budgetRemaining: 0,
   budgetPercent: 0, todayCost: 0, yesterdayCost: 0,
   projectedMonthCost: 0, meltdownStatus: 'normal',
 })
-const byModel = ref(mockCostByModel)
-const byAgent = ref(mockCostByAgent)
-const trend = ref(mockCostTrend)
-const records = ref(mockCostRecords)
+const byModel = ref<CostBreakdownItem[]>([])
+const byAgent = ref<CostBreakdownItem[]>([])
+const trend = ref<CostTrendPoint[]>([])
+const records = ref<CostRecord[]>([])
 const loading = ref(false)
 
 function barColor(percent: number) {
@@ -30,10 +28,20 @@ function barColor(percent: number) {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getCostOverview('this_month')
-    overview.value = res.data ?? overview.value
+    const [overviewRes, modelRes, agentRes, trendRes, recordsRes] = await Promise.all([
+      getCostOverview('this_month'),
+      getCostBreakdown('model', 'this_month'),
+      getCostBreakdown('agent', 'this_month'),
+      getCostTrend('30d', 'day'),
+      getCostRecords({ page: 1, pageSize: 20 }),
+    ])
+    overview.value = overviewRes.data ?? overview.value
+    byModel.value = modelRes.data ?? []
+    byAgent.value = agentRes.data ?? []
+    trend.value = (trendRes.data as any)?.series ?? trendRes.data ?? []
+    records.value = recordsRes.data?.list ?? []
   } catch (e: any) {
-    if (!USE_MOCK) ElMessage.error(e.message || '加载成本概览失败')
+    ElMessage.error(e.message || '加载成本数据失败')
   } finally {
     loading.value = false
   }
@@ -71,10 +79,11 @@ onMounted(loadData)
       <el-col :span="8">
         <el-card class="mb-24">
           <template #header><span>按模型拆分</span></template>
+          <el-empty v-if="byModel.length === 0" description="暂无数据" :image-size="48" />
           <div v-for="item in byModel" :key="item.label" class="breakdown-item">
             <div class="breakdown-header"><span>{{ item.label }}</span><span>{{ formatCost(item.cost) }}</span></div>
-            <el-progress :percentage="item.percent" :show-text="false" :stroke-width="8" />
-            <div class="text-muted" style="font-size:12px">{{ formatPercent(item.percent / 100) }} · {{ formatTokens(item.tokenInput + item.tokenOutput) }} tokens</div>
+            <el-progress :percentage="Number(item.percent)" :show-text="false" :stroke-width="8" />
+            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent) / 100) }} · {{ formatTokens(item.tokenInput + item.tokenOutput) }} tokens</div>
           </div>
         </el-card>
       </el-col>
@@ -82,11 +91,12 @@ onMounted(loadData)
       <!-- 按 Agent -->
       <el-col :span="8">
         <el-card class="mb-24">
-          <template #header><span>按 Agent 拆分 (Top 5)</span></template>
+          <template #header><span>按 Agent 拆分</span></template>
+          <el-empty v-if="byAgent.length === 0" description="暂无数据" :image-size="48" />
           <div v-for="item in byAgent" :key="item.label" class="breakdown-item">
             <div class="breakdown-header"><span>{{ item.label }}</span><span>{{ formatCost(item.cost) }}</span></div>
-            <el-progress :percentage="item.percent" :show-text="false" :stroke-width="8" color="#409eff" />
-            <div class="text-muted" style="font-size:12px">{{ formatPercent(item.percent / 100) }}</div>
+            <el-progress :percentage="Number(item.percent)" :show-text="false" :stroke-width="8" color="#409eff" />
+            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent) / 100) }}</div>
           </div>
         </el-card>
       </el-col>
@@ -95,9 +105,10 @@ onMounted(loadData)
       <el-col :span="8">
         <el-card class="mb-24">
           <template #header><span>30天趋势</span></template>
-          <div class="trend-chart">
+          <el-empty v-if="trend.length === 0" description="暂无数据" :image-size="48" />
+          <div v-else class="trend-chart">
             <div v-for="(point, idx) in trend.slice(-14)" :key="idx" class="trend-bar-col">
-              <div class="trend-bar" :style="{ height: (point.cost / 55 * 100) + 'px' }" :title="formatCost(point.cost)"></div>
+              <div class="trend-bar" :style="{ height: Math.max(2, point.cost / 55 * 100) + 'px' }" :title="formatCost(point.cost)"></div>
               <div class="trend-label">{{ point.date.split('-')[2] }}</div>
             </div>
           </div>
@@ -108,7 +119,7 @@ onMounted(loadData)
     <!-- 消费明细 -->
     <el-card>
       <template #header><span>消费明细</span></template>
-      <el-table :data="records" size="small">
+      <el-table :data="records" size="small" empty-text="暂无消费记录">
         <el-table-column prop="agentName" label="Agent" width="140" />
         <el-table-column prop="modelName" label="模型" width="150" />
         <el-table-column label="Input" width="100"><template #default="{ row }">{{ formatTokens(row.tokenInput) }}</template></el-table-column>

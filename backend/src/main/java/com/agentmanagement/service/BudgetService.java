@@ -3,7 +3,11 @@ package com.agentmanagement.service;
 import com.agentmanagement.entity.Budget;
 import com.agentmanagement.form.BudgetForm;
 import com.agentmanagement.vo.BudgetVO;
+import com.agentmanagement.vo.CostBreakdownVO;
 import com.agentmanagement.vo.CostOverviewVO;
+import com.agentmanagement.vo.CostTrendVO;
+import com.agentmanagement.vo.CostRecordVO;
+import com.agentmanagement.common.PageResult;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -24,4 +28,13 @@ public interface BudgetService extends IService<Budget> {
 
     /** 成本概览 */
     CostOverviewVO getCostOverview(String period);
+
+    /** 成本明细（按 model/agent/member 分组） */
+    List<CostBreakdownVO> getCostBreakdown(String dimension, String period);
+
+    /** 成本趋势（按天/小时） */
+    List<CostTrendVO> getCostTrend(String period, String granularity);
+
+    /** 费用记录分页列表 */
+    PageResult<CostRecordVO> getCostRecords(int page, int pageSize);
 }
