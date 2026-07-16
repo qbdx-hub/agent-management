@@ -109,6 +109,13 @@
             <version>5.8.25</version>
         </dependency>
 
+        <!-- OkHttp：调用 AI API（OpenAI 兼容格式，支持 SSE 流式） -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version>
+        </dependency>
+
         <!-- Lombok：@Data / @Slf4j 注解简化实体与日志（编译期处理，运行期不需要） -->
         <dependency>
             <groupId>org.projectlombok</groupId>

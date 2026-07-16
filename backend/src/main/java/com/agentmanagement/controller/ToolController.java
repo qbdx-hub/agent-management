@@ -2,6 +2,7 @@ package com.agentmanagement.controller;
 
 import com.agentmanagement.common.PageResult;
 import com.agentmanagement.common.Result;
+import com.agentmanagement.common.annotation.AuditLog;
 import com.agentmanagement.form.ToolQueryForm;
 import com.agentmanagement.form.ToolRegisterForm;
 import com.agentmanagement.form.ToolUpdateForm;
@@ -39,12 +40,14 @@ public class ToolController {
     }
 
     /** POST /tools —— 注册工具 */
+    @AuditLog(action = "tool.create", label = "注册工具", resourceType = "tool")
     @PostMapping
     public Result<ToolVO> create(@Valid @RequestBody ToolRegisterForm form) {
         return Result.success(toolService.registerTool(form));
     }
 
     /** PUT /tools/{id} —— 编辑工具 */
+    @AuditLog(action = "tool.update", label = "更新工具", resourceType = "tool")
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable("id") Long id,
                                @Valid @RequestBody ToolUpdateForm form) {
@@ -53,6 +56,7 @@ public class ToolController {
     }
 
     /** DELETE /tools/{id} —— 删除工具 */
+    @AuditLog(action = "tool.delete", label = "删除工具", resourceType = "tool")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable("id") Long id) {
         toolService.removeTool(id);

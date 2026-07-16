@@ -55,4 +55,27 @@ public final class SecurityUtils {
             throw new BusinessException(ResultCode.WORKSPACE_REQUIRED);
         }
     }
+
+    /**
+     * 取当前登录用户 id；未登录返回 null（不抛异常）。
+     * 供审计切面在 login/register 等无认证上下文的场景使用。
+     */
+    public static Long currentUserIdSafe() {
+        try {
+            return currentUserId();
+        } catch (BusinessException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 取当前工作空间 id；请求头缺失返回 null（不抛异常）。供审计切面使用。
+     */
+    public static Long currentWorkspaceIdSafe() {
+        try {
+            return currentWorkspaceId();
+        } catch (BusinessException e) {
+            return null;
+        }
+    }
 }

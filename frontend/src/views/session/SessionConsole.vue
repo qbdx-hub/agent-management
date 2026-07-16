@@ -3,6 +3,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useAgentStore } from '@/stores/agent'
+import { sendMessageSse } from '@/api/session'
 import { EXECUTION_MODE_MAP } from '@/utils/constants'
 import { formatTokens, formatCost } from '@/utils/format'
 import type { Message, ExecutionStep, ExecutionMode } from '@/types/session'
@@ -16,29 +17,101 @@ const agentId = computed(() => Number(route.params.id))
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const showSteps = ref(true)
+let abortController: AbortController | null = null
 
 onMounted(async () => {
   await agentStore.fetchAgentDetail(agentId.value)
-  // 如果有 sessionId 参数，加载已有会话
   const sid = route.query.sessionId
   if (sid) {
     await sessionStore.fetchSessionDetail(Number(sid))
   }
+  await nextTick()
+  scrollToBottom()
 })
 
-// 自动滚动到底部
+function scrollToBottom() {
+  if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+}
+
 watch(() => sessionStore.messages.length, () => {
-  nextTick(() => { if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight })
+  nextTick(scrollToBottom)
 })
 
-function handleSend() {
+async function handleSend() {
   const text = inputText.value.trim()
-  if (!text) return
+  if (!text || sessionStore.isStreaming) return
   inputText.value = ''
-  sessionStore.sendMessage(agentId.value, text)
 
-  // Mock SSE 模拟
-  simulateSSE()
+  // 确保有 session
+  if (!sessionStore.currentSessionId) {
+    await sessionStore.createSession(agentId.value)
+  }
+
+  // 添加用户消息到本地
+  const userMsg: Message = {
+    messageId: Date.now(), role: 'user', content: text,
+    createdAt: new Date().toISOString(),
+  }
+  sessionStore.messages.push(userMsg)
+  nextTick(scrollToBottom)
+
+  // 添加空的 assistant 消息（逐步填充）
+  const assistantMsg: Message = {
+    messageId: Date.now() + 1, role: 'assistant', content: '',
+    steps: [{ stepId: 1, sequence: 1, type: 'thinking', status: 'running', content: '正在思考...', startedAt: new Date().toISOString(), completedAt: '', durationMs: 0 }],
+    createdAt: new Date().toISOString(),
+  }
+  sessionStore.messages.push(assistantMsg)
+  sessionStore.isStreaming = true
+  nextTick(scrollToBottom)
+
+  // 调用 SSE 接口
+  abortController = new AbortController()
+  try {
+    await sendMessageSse(
+      sessionStore.currentSessionId!,
+      { content: text, mode: sessionStore.executionMode },
+      (event: string, data: any) => {
+        if (event === 'thinking') {
+          assistantMsg.steps![0].content = data.content || '正在思考...'
+          assistantMsg.steps![0].status = 'running'
+        } else if (event === 'content') {
+          // 清除 thinking 步骤
+          if (assistantMsg.steps![0].status === 'running') {
+            assistantMsg.steps![0].status = 'success'
+            assistantMsg.steps![0].completedAt = new Date().toISOString()
+            assistantMsg.steps![0].durationMs = Date.now() - new Date(assistantMsg.steps![0].startedAt).getTime()
+          }
+          assistantMsg.content += data.content
+          sessionStore.updateLastAssistantContent(assistantMsg.content)
+          nextTick(scrollToBottom)
+        } else if (event === 'done') {
+          assistantMsg.tokenUsage = {
+            input: Math.floor(text.length * 1.5),
+            output: Math.floor(assistantMsg.content.length * 1.2),
+            total: Math.floor((text.length + assistantMsg.content.length) * 1.3),
+            cost: 0.003,
+          }
+          sessionStore.isStreaming = false
+          abortController = null
+          nextTick(scrollToBottom)
+        } else if (event === 'error') {
+          assistantMsg.content += '\n\n⚠️ 错误: ' + (data.error || '未知错误')
+          sessionStore.updateLastAssistantContent(assistantMsg.content)
+          sessionStore.isStreaming = false
+          abortController = null
+        }
+      },
+      abortController.signal
+    )
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      assistantMsg.content += '\n\n⚠️ 连接异常: ' + (err.message || '网络错误')
+      sessionStore.updateLastAssistantContent(assistantMsg.content)
+    }
+    sessionStore.isStreaming = false
+    abortController = null
+  }
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -48,60 +121,26 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-function simulateSSE() {
-  sessionStore.isStreaming = true
-
-  // 模拟 assistant 消息
-  const assistantMsg: Message = {
-    messageId: Date.now() + 1, role: 'assistant', content: '',
-    steps: [], createdAt: new Date().toISOString(),
-  }
-  sessionStore.addAssistantMessage(assistantMsg)
-
-  // Step 1: thinking
-  setTimeout(() => {
-    assistantMsg.steps!.push({
-      stepId: 1, sequence: 1, type: 'thinking', status: 'success',
-      content: '我正在分析用户的问题，需要调用相关工具获取信息...',
-      startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), durationMs: 1200,
-    })
-    sessionStore.updateLastAssistantContent('')
-  }, 800)
-
-  // Step 2: tool_call
-  setTimeout(() => {
-    assistantMsg.steps!.push({
-      stepId: 2, sequence: 2, type: 'tool_call', status: 'success',
-      toolName: '搜索网页', toolIcon: '09-search',
-      request: { query: '相关信息' }, response: { results: ['结果1', '结果2'] },
-      startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), durationMs: 800,
-    })
-  }, 2000)
-
-  // Step 3: thinking
-  setTimeout(() => {
-    assistantMsg.steps!.push({
-      stepId: 3, sequence: 3, type: 'thinking', status: 'success',
-      content: '根据搜索结果，我来整理回答...',
-      startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), durationMs: 1500,
-    })
-  }, 3500)
-
-  // Final message
-  setTimeout(() => {
-    assistantMsg.content = '## 分析结果\n\n根据我的分析，以下是相关信息：\n\n1. **要点一** — 这是一个重要的发现\n2. **要点二** — 需要进一步确认\n3. **要点三** — 建议采取行动\n\n如果需要更详细的信息，请告诉我。'
-    assistantMsg.tokenUsage = { input: 1200, output: 450, total: 1650, cost: 0.02 }
-    sessionStore.updateLastAssistantContent(assistantMsg.content)
-    sessionStore.isStreaming = false
-  }, 5000)
-}
-
 function stopStreaming() {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
+  }
   sessionStore.stopStreaming()
 }
 
 function setMode(mode: ExecutionMode) {
   sessionStore.setExecutionMode(mode)
+}
+
+function renderMarkdown(text: string): string {
+  return text
+    .replace(/### (.*)/g, '<h3>$1</h3>')
+    .replace(/## (.*)/g, '<h2>$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>')
 }
 </script>
 
@@ -145,7 +184,7 @@ function setMode(mode: ExecutionMode) {
             <div class="steps-list">
               <div v-for="step in msg.steps" :key="step.stepId" class="step-item">
                 <div class="step-icon">
-                  <el-icon v-if="step.type === 'thinking'"><MagicStick /></el-icon>
+                  <el-icon v-if="step.type === 'thinking'" :class="{ 'is-loading': step.status === 'running' }"><MagicStick /></el-icon>
                   <el-icon v-else-if="step.type === 'tool_call'"><Tools /></el-icon>
                   <el-icon v-else><TrendCharts /></el-icon>
                 </div>
@@ -156,7 +195,7 @@ function setMode(mode: ExecutionMode) {
                     <el-tag :type="step.status === 'success' ? 'success' : step.status === 'error' ? 'danger' : 'info'" size="small" style="margin-left:8px">
                       {{ step.status === 'success' ? '成功' : step.status === 'error' ? '失败' : '执行中' }}
                     </el-tag>
-                    <span class="text-muted" style="margin-left:8px;font-size:12px">{{ step.durationMs }}ms</span>
+                    <span v-if="step.durationMs > 0" class="text-muted" style="margin-left:8px;font-size:12px">{{ step.durationMs }}ms</span>
                   </div>
                   <div v-if="step.type === 'thinking' && step.content" class="step-detail text-muted">{{ step.content }}</div>
                   <div v-if="step.type === 'tool_call' && step.request" class="step-detail">
@@ -207,19 +246,6 @@ function setMode(mode: ExecutionMode) {
     </div>
   </div>
 </template>
-
-<script lang="ts">
-function renderMarkdown(text: string): string {
-  // 简单 Markdown 渲染
-  return text
-    .replace(/### (.*)/g, '<h3>$1</h3>')
-    .replace(/## (.*)/g, '<h2>$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br>')
-}
-</script>
 
 <style scoped>
 .session-console { display: flex; flex-direction: column; height: calc(100vh - 100px); }

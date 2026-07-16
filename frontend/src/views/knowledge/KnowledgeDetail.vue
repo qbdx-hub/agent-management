@@ -10,6 +10,8 @@ import {
   uploadDocument,
   uploadDocumentByChunk,
   deleteDocument,
+  searchKnowledge,
+  processDocument,
   validateFile,
   getFileExtension,
   MAX_FILE_SIZE,
@@ -103,9 +105,14 @@ async function handleUpload(options: any): Promise<void> {
     }
 
     if (res.code === 0) {
-      ElMessage.success(`"${file.name}" 上传成功`)
-      // 上传完成后刷新文档列表
+      ElMessage.success(`"${file.name}" 上传成功，开始处理...`)
       await refreshDocuments()
+      // 自动触发文档处理
+      if (res.data?.id) {
+        try {
+          await processDocument(kbId, res.data.id)
+        } catch { /* 静默失败，用户可手动重试 */ }
+      }
     }
   } catch (err: any) {
     ElMessage.error(err?.message || `"${file.name}" 上传失败`)
@@ -161,11 +168,32 @@ const searching = ref(false)
 async function handleSearch() {
   if (!searchQuery.value) return
   searching.value = true
-  // TODO: 接入后端向量化搜索接口
-  searchResults.value = [
-    { chunkIndex: 3, documentTitle: '示例文档.pdf', content: '检索接口待后端实现...', score: 0.92 },
-  ]
-  searching.value = false
+  try {
+    const res = await searchKnowledge(kbId, searchQuery.value, 5)
+    if (res.code === 0 && res.data) {
+      searchResults.value = res.data
+    } else {
+      searchResults.value = []
+    }
+  } catch {
+    searchResults.value = []
+    ElMessage.error('检索失败')
+  } finally {
+    searching.value = false
+  }
+}
+
+async function handleProcessDocument(docId: number) {
+  try {
+    const res = await processDocument(kbId, docId)
+    if (res.code === 0) {
+      ElMessage.success('文档处理已启动')
+      // 刷新文档列表
+      setTimeout(() => refreshDocuments(), 2000)
+    }
+  } catch {
+    ElMessage.error('触发处理失败')
+  }
 }
 
 // ==================== 设置 ====================
@@ -262,8 +290,9 @@ function statusLabel(status: string) {
             <el-table-column label="上传时间" width="160">
               <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
             </el-table-column>
-            <el-table-column label="" width="70" align="center">
+            <el-table-column label="操作" width="140" align="center">
               <template #default="{ row }">
+                <el-button v-if="row.status === 'pending' || row.status === 'failed'" text type="primary" size="small" @click="handleProcessDocument(row.id)">处理</el-button>
                 <el-button text type="danger" size="small" @click="handleDeleteDoc(row)">删除</el-button>
               </template>
             </el-table-column>

@@ -1,13 +1,14 @@
 package com.agentmanagement.controller;
 
 import com.agentmanagement.common.Result;
-import com.agentmanagement.entity.AuditLog;
 import com.agentmanagement.entity.Document;
 import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.form.KnowledgeBaseCreateForm;
 import com.agentmanagement.service.AuditLogService;
+import com.agentmanagement.service.DocumentProcessingService;
 import com.agentmanagement.service.DocumentService;
 import com.agentmanagement.service.KnowledgeBaseService;
+import com.agentmanagement.service.RetrievalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,12 @@ public class KnowledgeBaseController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private DocumentProcessingService documentProcessingService;
+
+    @Autowired
+    private RetrievalService retrievalService;
 
     // ==================== 知识库接口 ====================
 
@@ -154,6 +161,28 @@ public class KnowledgeBaseController {
                 "从知识库[" + kbId + "]删除文档[" + docId + "]", "success",
                 getClientIp(request), request.getHeader("User-Agent"));
 
+        return Result.success();
+    }
+
+    // ==================== 检索 + 处理接口 ====================
+
+    /**
+     * GET /api/v1/knowledge-bases/{kbId}/search —— 知识检索（向量搜索）。
+     */
+    @GetMapping("/{kbId}/search")
+    public Result<List<RetrievalService.SearchResult>> search(
+            @PathVariable Long kbId,
+            @RequestParam("q") String query,
+            @RequestParam(defaultValue = "5") int topK) {
+        return Result.success(retrievalService.search(kbId, query, topK));
+    }
+
+    /**
+     * POST /api/v1/knowledge-bases/{kbId}/documents/{docId}/process —— 触发文档处理（分块+向量化）。
+     */
+    @PostMapping("/{kbId}/documents/{docId}/process")
+    public Result<Void> processDocument(@PathVariable Long kbId, @PathVariable Long docId) {
+        documentProcessingService.processDocument(docId);
         return Result.success();
     }
 

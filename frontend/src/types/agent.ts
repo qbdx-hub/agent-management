@@ -92,6 +92,10 @@ export interface AgentDetail {
   creatorName: string
   createdAt: string
   updatedAt: string
+  /** AI 连接配置 */
+  aiBaseUrl?: string
+  aiApiKeyMasked?: string
+  aiModel?: string
   config: AgentConfig
   stats: AgentStats
 }
@@ -116,6 +120,26 @@ export interface UpdateAgentDTO {
   description?: string
   avatar?: string
   tags?: string[]
+  /** AI 连接配置 */
+  aiBaseUrl?: string
+  aiApiKey?: string
+  aiModel?: string
+  /** 模型配置 */
+  modelProvider?: string
+  modelName?: string
+  temperature?: number
+  maxTokens?: number
+  topP?: number
+  /** 记忆配置 */
+  memoryStrategy?: string
+  workingWindow?: number
+  longTermEnabled?: number
+  knowledgeBaseIds?: number[]
+  /** 执行配置 */
+  maxIterations?: number
+  timeout?: number
+  reflectionEnabled?: number
+  reflectionDepth?: number
 }
 
 // ==================== 模型供应商 ====================

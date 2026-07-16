@@ -59,42 +59,37 @@ export async function cloneAgent(id: number, data: { name: string; copyConfig: b
 
 export async function updateModelConfig(agentId: number, config: any): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.put<ApiResponse<null>>(`/agents/${agentId}/config/model`, config)
-  return res.data
+  return updateAgent(agentId, config)
 }
 
 export async function updatePromptConfig(agentId: number, data: { systemPrompt: string; promptVariables: any[] }): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.put<ApiResponse<null>>(`/agents/${agentId}/config/prompt`, data)
-  return res.data
+  return updateAgent(agentId, data as any)
 }
 
-export async function getPromptVersions(agentId: number): Promise<ApiResponse<PaginatedData<PromptVersion>>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: { list: mockPromptVersions, total: mockPromptVersions.length, page: 1, pageSize: 10 } }
-  const res = await http.get<ApiResponse<PaginatedData<PromptVersion>>>(`/agents/${agentId}/config/prompt/versions`)
-  return res.data
+export async function getPromptVersions(_agentId: number): Promise<ApiResponse<PaginatedData<PromptVersion>>> {
+  // 后端暂无版本管理，返回空列表
+  return { code: 0, message: 'ok', data: { list: [], total: 0, page: 1, pageSize: 10 } }
 }
 
 export async function updateToolBindings(agentId: number, tools: { toolId: number; enabled: boolean }[]): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.put<ApiResponse<null>>(`/agents/${agentId}/config/tools`, { tools })
-  return res.data
+  // 工具绑定暂存为 agent 配置的一部分
+  return updateAgent(agentId, { toolBindings: tools } as any)
 }
 
 export async function updateMemoryConfig(agentId: number, data: any): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.put<ApiResponse<null>>(`/agents/${agentId}/config/memory`, data)
-  return res.data
+  return updateAgent(agentId, data)
 }
 
 export async function updateExecutionConfig(agentId: number, data: any): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.put<ApiResponse<null>>(`/agents/${agentId}/config/execution`, data)
-  return res.data
+  return updateAgent(agentId, data)
 }
 
 export async function getModelProviders(): Promise<ApiResponse<ModelProvider[]>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: mockModelProviders }
-  const res = await http.get<ApiResponse<ModelProvider[]>>('/model-providers')
-  return res.data
+  // 后端暂无此接口，返回常用模型列表
+  return { code: 0, message: 'ok', data: mockModelProviders }
 }

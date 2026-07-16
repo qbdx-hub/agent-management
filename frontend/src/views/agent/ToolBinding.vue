@@ -1,24 +1,36 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAgentStore } from '@/stores/agent'
-import { mockTools } from '@/mock/tools'
+import { getToolList } from '@/api/tool'
+import { updateToolBindings } from '@/api/agent'
 import { ElMessage } from 'element-plus'
 import ToolIcon from '@/components/ToolIcon.vue'
+import type { ToolSummary } from '@/types/tool'
 
 const agentStore = useAgentStore()
 const agent = computed(() => agentStore.current)
 const loading = ref(false)
-
-const allTools = mockTools
+const allTools = ref<ToolSummary[]>([])
 const boundToolIds = ref<number[]>([])
 
-// 从 agent config 初始化
-const initBound = () => {
-  if (agent.value) {
+onMounted(async () => {
+  // 加载真实工具列表
+  try {
+    const res = await getToolList({ page: 1, pageSize: 100 })
+    if (res.code === 0 && res.data) {
+      allTools.value = res.data.list || []
+    }
+  } catch { /* ignore */ }
+  initBound()
+})
+
+watch(agent, () => { initBound() }, { deep: true })
+
+function initBound() {
+  if (agent.value?.config?.boundTools) {
     boundToolIds.value = agent.value.config.boundTools.filter(t => t.enabled).map(t => t.toolId)
   }
 }
-initBound()
 
 const isBound = (id: number) => boundToolIds.value.includes(id)
 
@@ -31,9 +43,18 @@ function toggleTool(id: number) {
 }
 
 async function handleSave() {
+  if (!agent.value) return
   loading.value = true
   try {
-    ElMessage.success('工具绑定已保存')
+    const tools = allTools.value.map(t => ({
+      toolId: t.id,
+      enabled: boundToolIds.value.includes(t.id),
+    }))
+    const res = await updateToolBindings(agent.value.id, tools)
+    if (res.code === 0) {
+      await agentStore.fetchAgentDetail(agent.value.id)
+      ElMessage.success('工具绑定已保存')
+    }
   } catch { ElMessage.error('保存失败') } finally { loading.value = false }
 }
 </script>
@@ -59,6 +80,7 @@ async function handleSave() {
         </el-card>
       </el-col>
     </el-row>
+    <el-empty v-if="allTools.length === 0" description="暂无可用工具" />
   </div>
 </template>
 
@@ -68,7 +90,6 @@ async function handleSave() {
 .tool-bind-card { cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
 .tool-bind-card.bound { border-color: var(--el-color-success); background: var(--el-color-success-light-9); }
 .tool-bind-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.tool-icon { font-size: 24px; }
 .tool-name { font-weight: 600; font-size: 14px; }
 .bind-check { margin-left: auto; font-size: 20px; }
 .tool-desc { font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMonitorOverview, getTokenTrend, getAgentHealth, getErrorLogs, getAlertRecords } from '@/api/monitor'
 import { formatPercent, formatLatency, formatTokens, formatNumber } from '@/utils/format'
@@ -18,6 +18,11 @@ const agentHealth = ref<AgentHealthItem[]>([])
 const errors = ref<ErrorLogItem[]>([])
 const alerts = ref<AlertRecord[]>([])
 const period = ref('today')
+
+const maxToken = computed(() => {
+  const all = tokenTrend.value.flatMap(p => [p.input, p.output])
+  return Math.max(...all, 1)
+})
 
 function healthColor(status: string) {
   return status === 'healthy' ? '#67c23a' : status === 'warning' ? '#e6a23c' : '#f56c6c'
@@ -48,13 +53,13 @@ async function loadData() {
     // 加载错误日志
     const errorRes = await getErrorLogs({ page: 1, pageSize: 10 })
     if (errorRes.code === 0 && errorRes.data) {
-      errors.value = (errorRes.data as any).list || errorRes.data as ErrorLogItem[]
+      errors.value = ((errorRes.data as any).list || errorRes.data) as ErrorLogItem[]
     }
 
     // 加载告警记录
     const alertRes = await getAlertRecords({ page: 1, pageSize: 5 })
     if (alertRes.code === 0 && alertRes.data) {
-      alerts.value = (alertRes.data as any).list || alertRes.data as AlertRecord[]
+      alerts.value = ((alertRes.data as any).list || alertRes.data) as AlertRecord[]
     }
   } catch (e) {
     console.error('加载监控数据失败', e)
@@ -178,18 +183,6 @@ watch(period, loadData)
     </el-row>
   </div>
 </template>
-
-<script lang="ts">
-// 计算最大 token 值用于图表高度
-export default {
-  computed: {
-    maxToken(): number {
-      const all = this.tokenTrend.flatMap(p => [p.input, p.output])
-      return Math.max(...all, 1)
-    }
-  }
-}
-</script>
 
 <style scoped>
 .monitor-page { max-width: 1400px; }

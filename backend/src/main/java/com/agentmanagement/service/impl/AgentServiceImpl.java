@@ -138,10 +138,35 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         Agent agent = requireAgentInWorkspace(id);
         Agent update = new Agent();
         update.setId(agent.getId());
+        // 基本信息
         update.setName(form.getName());
         update.setDescription(form.getDescription());
         update.setAvatar(form.getAvatar());
         update.setTags(form.getTags());
+        // AI 连接配置
+        update.setAiBaseUrl(form.getAiBaseUrl());
+        update.setAiApiKey(form.getAiApiKey());
+        update.setAiModel(form.getAiModel());
+        // 模型配置
+        update.setModelProvider(form.getModelProvider());
+        update.setModelName(form.getModelName());
+        update.setTemperature(form.getTemperature());
+        update.setMaxTokens(form.getMaxTokens());
+        update.setTopP(form.getTopP());
+        // 提示词配置
+        update.setSystemPrompt(form.getSystemPrompt());
+        update.setPromptVariables(form.getPromptVariables());
+        // 记忆配置
+        update.setMemoryStrategy(form.getMemoryStrategy());
+        update.setWorkingWindow(form.getWorkingWindow());
+        update.setLongTermEnabled(form.getLongTermEnabled());
+        update.setKnowledgeBaseIds(form.getKnowledgeBaseIds());
+        // 执行配置
+        update.setMaxIterations(form.getMaxIterations());
+        update.setTimeout(form.getTimeout());
+        update.setReflectionEnabled(form.getReflectionEnabled());
+        update.setReflectionDepth(form.getReflectionDepth());
+        update.setOutputSchema(form.getOutputSchema());
         // MyBatis-Plus updateById 默认仅更新非 null 字段，实现部分更新语义
         agentMapper.updateById(update);
     }
@@ -201,6 +226,10 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         vo.setCreatorName(loadUserName(agent.getCreatedBy()));
         vo.setCreatedAt(agent.getCreatedAt());
         vo.setUpdatedAt(agent.getUpdatedAt());
+        // AI 连接配置（脱敏）
+        vo.setAiBaseUrl(agent.getAiBaseUrl());
+        vo.setAiApiKeyMasked(maskApiKey(agent.getAiApiKey()));
+        vo.setAiModel(agent.getAiModel());
 
         AgentVO.Config config = new AgentVO.Config();
         config.setModelProvider(agent.getModelProvider());
@@ -217,8 +246,15 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         memory.setWorkingWindow(agent.getWorkingWindow());
         memory.setShortTermStrategy(agent.getMemoryStrategy());
         memory.setLongTermEnabled(toBool(agent.getLongTermEnabled()));
-        memory.setKnowledgeBaseIds(agent.getKnowledgeBaseIds() != null
-                ? agent.getKnowledgeBaseIds() : new ArrayList<Long>());
+        if (agent.getKnowledgeBaseIds() != null) {
+            List<Long> kbIds = new ArrayList<>();
+            for (Object id : agent.getKnowledgeBaseIds()) {
+                kbIds.add(id instanceof Number ? ((Number) id).longValue() : Long.valueOf(id.toString()));
+            }
+            memory.setKnowledgeBaseIds(kbIds);
+        } else {
+            memory.setKnowledgeBaseIds(new ArrayList<Long>());
+        }
         config.setMemory(memory);
 
         AgentVO.Execution execution = new AgentVO.Execution();
@@ -248,6 +284,14 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
             return null;
         }
         return value != 0;
+    }
+
+    /** API Key 脱敏：只显示前 8 位 + *** */
+    private String maskApiKey(String apiKey) {
+        if (apiKey == null || apiKey.length() <= 8) {
+            return apiKey;
+        }
+        return apiKey.substring(0, 8) + "***";
     }
 
     private String loadUserName(Long userId) {

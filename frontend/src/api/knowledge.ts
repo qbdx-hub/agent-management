@@ -239,6 +239,18 @@ export async function deleteDocument(docId: number, kbId: number): Promise<ApiRe
   return res.data
 }
 
+/** 知识检索（向量搜索） */
+export async function searchKnowledge(kbId: number, query: string, topK = 5): Promise<ApiResponse<any[]>> {
+  const res = await http.get<ApiResponse<any[]>>(`/knowledge-bases/${kbId}/search`, { params: { q: query, topK } })
+  return res.data
+}
+
+/** 触发文档处理（分块+向量化） */
+export async function processDocument(kbId: number, docId: number): Promise<ApiResponse<null>> {
+  const res = await http.post<ApiResponse<null>>(`/knowledge-bases/${kbId}/documents/${docId}/process`)
+  return res.data
+}
+
 // ==================== 分片上传基础逻辑 ====================
 
 /** 分片上传初始化请求体 */

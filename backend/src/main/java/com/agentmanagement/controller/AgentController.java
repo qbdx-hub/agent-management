@@ -2,6 +2,7 @@ package com.agentmanagement.controller;
 
 import com.agentmanagement.common.PageResult;
 import com.agentmanagement.common.Result;
+import com.agentmanagement.common.annotation.AuditLog;
 import com.agentmanagement.form.AgentCreateForm;
 import com.agentmanagement.form.AgentQueryForm;
 import com.agentmanagement.form.AgentUpdateForm;
@@ -39,12 +40,14 @@ public class AgentController {
     }
 
     /** POST /agents —— 新建（含模型配置） */
+    @AuditLog(action = "agent.create", label = "创建 Agent", resourceType = "agent")
     @PostMapping
     public Result<AgentVO> create(@Valid @RequestBody AgentCreateForm form) {
         return Result.success(agentService.createAgent(form));
     }
 
     /** PUT /agents/{id} —— 编辑基本信息 */
+    @AuditLog(action = "agent.update", label = "更新 Agent", resourceType = "agent")
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable("id") Long id,
                                @Valid @RequestBody AgentUpdateForm form) {
@@ -53,6 +56,7 @@ public class AgentController {
     }
 
     /** PATCH /agents/{id}/status —— 修改状态 */
+    @AuditLog(action = "agent.status_change", label = "变更 Agent 状态", resourceType = "agent")
     @PatchMapping("/{id}/status")
     public Result<Void> patchStatus(@PathVariable("id") Long id,
                                     @RequestBody Map<String, String> body) {
@@ -61,6 +65,7 @@ public class AgentController {
     }
 
     /** DELETE /agents/{id} —— 删除 */
+    @AuditLog(action = "agent.delete", label = "删除 Agent", resourceType = "agent")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable("id") Long id) {
         agentService.removeAgent(id);

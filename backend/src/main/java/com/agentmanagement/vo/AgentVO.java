@@ -43,6 +43,11 @@ public class AgentVO implements Serializable {
 
     private LocalDateTime updatedAt;
 
+    /** AI 连接配置（脱敏：apiKey 只返回前 8 位 + ***） */
+    private String aiBaseUrl;
+    private String aiApiKeyMasked;
+    private String aiModel;
+
     private Config config;
 
     private Stats stats;

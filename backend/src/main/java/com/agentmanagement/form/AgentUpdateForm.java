@@ -3,14 +3,18 @@ package com.agentmanagement.form;
 import lombok.Data;
 
 import javax.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 编辑 Agent 基本信息表单（对应前端 UpdateAgentDTO，字段全部可选）。
- * 仅更新 name/description/avatar/tags；模型/提示词/记忆等配置走各自子接口（本期不接通）。
+ * 编辑 Agent 表单（对应前端所有 Agent 配置更新）。
+ * 字段全部可选，仅更新非 null 字段。
  */
 @Data
 public class AgentUpdateForm {
+
+    // ===== 基本信息 =====
 
     @Size(max = 100, message = "Agent名称不能超过100字")
     private String name;
@@ -21,4 +25,55 @@ public class AgentUpdateForm {
     private String avatar;
 
     private List<String> tags;
+
+    // ===== AI 连接配置 =====
+
+    private String aiBaseUrl;
+
+    private String aiApiKey;
+
+    private String aiModel;
+
+    // ===== 模型配置 =====
+
+    private String modelProvider;
+
+    private String modelName;
+
+    private BigDecimal temperature;
+
+    private Integer maxTokens;
+
+    private BigDecimal topP;
+
+    // ===== 提示词配置 =====
+
+    private String systemPrompt;
+
+    /** 提示词变量 JSON 数组 */
+    private List<Map<String, Object>> promptVariables;
+
+    // ===== 记忆配置 =====
+
+    /** 记忆策略：buffer/summary/vector/sliding_window/full */
+    private String memoryStrategy;
+
+    private Integer workingWindow;
+
+    private Integer longTermEnabled;
+
+    private List<Long> knowledgeBaseIds;
+
+    // ===== 执行配置 =====
+
+    private Integer maxIterations;
+
+    /** 超时时间（ms） */
+    private Integer timeout;
+
+    private Integer reflectionEnabled;
+
+    private Integer reflectionDepth;
+
+    private Map<String, Object> outputSchema;
 }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAgentStore } from '@/stores/agent'
+import { updateMemoryConfig } from '@/api/agent'
+import { listKnowledgeBases } from '@/api/knowledge'
 import { MEMORY_STRATEGY_MAP } from '@/utils/constants'
 import { ElMessage } from 'element-plus'
 
@@ -9,22 +11,52 @@ const agent = computed(() => agentStore.current)
 const loading = ref(false)
 
 const config = ref({
-  workingWindow: agent.value?.config.memory.workingWindow ?? 20,
-  shortTermStrategy: agent.value?.config.memory.shortTermStrategy ?? 'summary',
-  longTermEnabled: agent.value?.config.memory.longTermEnabled ?? true,
-  knowledgeBaseIds: agent.value?.config.memory.knowledgeBaseIds ?? [],
+  workingWindow: 20,
+  shortTermStrategy: 'summary',
+  longTermEnabled: true,
+  knowledgeBaseIds: [] as number[],
 })
 
-const mockKnowledgeBases = [
-  { id: 1, name: 'Agent 业务知识库' },
-  { id: 2, name: '技术架构文档' },
-  { id: 3, name: 'API 接口规范' },
-]
+const knowledgeBases = ref<{ id: number; name: string }[]>([])
+
+onMounted(async () => {
+  // 加载知识库列表
+  try {
+    const res = await listKnowledgeBases()
+    if (res.code === 0 && res.data) {
+      knowledgeBases.value = (res.data || []).map((kb: any) => ({ id: kb.id, name: kb.name }))
+    }
+  } catch { /* ignore */ }
+  initForm()
+})
+
+watch(agent, () => { initForm() }, { deep: true })
+
+function initForm() {
+  if (!agent.value) return
+  const mem = agent.value.config.memory
+  config.value = {
+    workingWindow: mem.workingWindow ?? 20,
+    shortTermStrategy: mem.shortTermStrategy ?? 'summary',
+    longTermEnabled: mem.longTermEnabled ?? true,
+    knowledgeBaseIds: mem.knowledgeBaseIds ?? [],
+  }
+}
 
 async function handleSave() {
+  if (!agent.value) return
   loading.value = true
   try {
-    ElMessage.success('记忆配置已保存')
+    const res = await updateMemoryConfig(agent.value.id, {
+      workingWindow: config.value.workingWindow,
+      memoryStrategy: config.value.shortTermStrategy,
+      longTermEnabled: config.value.longTermEnabled ? 1 : 0,
+      knowledgeBaseIds: config.value.knowledgeBaseIds,
+    })
+    if (res.code === 0) {
+      await agentStore.fetchAgentDetail(agent.value.id)
+      ElMessage.success('记忆配置已保存')
+    }
   } catch { ElMessage.error('保存失败') } finally { loading.value = false }
 }
 </script>
@@ -50,7 +82,7 @@ async function handleSave() {
 
       <el-form-item v-if="config.longTermEnabled" label="绑定知识库">
         <el-select v-model="config.knowledgeBaseIds" multiple placeholder="选择知识库" style="width:100%">
-          <el-option v-for="kb in mockKnowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
+          <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
         </el-select>
       </el-form-item>
 

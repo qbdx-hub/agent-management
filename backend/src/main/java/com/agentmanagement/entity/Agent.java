@@ -59,6 +59,17 @@ public class Agent implements Serializable {
     /** Top P */
     private BigDecimal topP;
 
+    // ============ AI 连接配置 ============
+
+    /** AI API Base URL（如 https://api.openai.com/v1） */
+    private String aiBaseUrl;
+
+    /** AI API Key */
+    private String aiApiKey;
+
+    /** AI 模型名称（如 gpt-4o, deepseek-chat） */
+    private String aiModel;
+
     // ============ 提示词配置 ============
 
     private String systemPrompt;

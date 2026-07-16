@@ -1,6 +1,7 @@
 package com.agentmanagement.controller;
 
 import com.agentmanagement.common.Result;
+import com.agentmanagement.common.annotation.AuditLog;
 import com.agentmanagement.form.LoginForm;
 import com.agentmanagement.form.RegisterForm;
 import com.agentmanagement.form.UserProfileForm;
@@ -24,12 +25,14 @@ public class AuthController {
     private AuthService authService;
 
     /** POST /api/v1/auth/login —— 用户名密码登录 */
+    @AuditLog(action = "user.login", label = "用户登录", resourceType = "user")
     @PostMapping("/login")
     public Result<LoginVO> login(@Valid @RequestBody LoginForm form) {
         return Result.success(authService.login(form));
     }
 
     /** POST /api/v1/auth/register —— 用户注册，成功无返回体 */
+    @AuditLog(action = "user.register", label = "用户注册", resourceType = "user")
     @PostMapping("/register")
     public Result<Void> register(@Valid @RequestBody RegisterForm form) {
         authService.register(form);

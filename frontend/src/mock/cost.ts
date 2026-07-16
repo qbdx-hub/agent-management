@@ -34,8 +34,8 @@ for (let i = 30; i >= 1; i--) {
 }
 
 export const mockBudgets: BudgetConfig[] = [
-  { id: 1, name: '个人日预算', scope: 'user', scopeId: null, period: 'daily', limit: 100, warnPercent: 80, meltdownEnabled: true, notifyChannels: ['feishu'] },
-  { id: 2, name: '工作空间月预算', scope: 'workspace', scopeId: null, period: 'monthly', limit: 2000, warnPercent: 80, meltdownEnabled: true, notifyChannels: ['feishu', 'email'] },
+  { id: 1, name: '个人日预算', scope: 'user', scopeId: null, period: 'daily', limit: 100, currentAmount: 45.2, enabled: true, warnPercent: 80, meltdownEnabled: true, notifyChannels: ['feishu'], createdAt: '2026-07-01T00:00:00+08:00', updatedAt: '2026-07-14T00:00:00+08:00' },
+  { id: 2, name: '工作空间月预算', scope: 'workspace', scopeId: null, period: 'monthly', limit: 2000, currentAmount: 1247.3, enabled: true, warnPercent: 80, meltdownEnabled: true, notifyChannels: ['feishu', 'email'], createdAt: '2026-07-01T00:00:00+08:00', updatedAt: '2026-07-14T00:00:00+08:00' },
 ]
 
 export const mockCostRecords: CostRecord[] = [

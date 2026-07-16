@@ -156,14 +156,14 @@ onMounted(loadBudgets)
         <el-table-column label="范围" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="row.scope === 'global' ? '' : row.scope === 'agent' ? 'warning' : 'info'">
-              {{ SCOPE_LABEL[row.scope] || row.scope }}
+              {{ SCOPE_LABEL[row.scope as BudgetScope] || row.scope }}
             </el-tag>
           </template>
         </el-table-column>
 
         <el-table-column label="周期" width="90">
           <template #default="{ row }">
-            {{ PERIOD_LABEL[row.period] || row.period }}
+            {{ PERIOD_LABEL[row.period as BudgetPeriod] || row.period }}
           </template>
         </el-table-column>
 

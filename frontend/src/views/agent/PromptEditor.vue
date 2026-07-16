@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAgentStore } from '@/stores/agent'
-import { mockPromptVersions } from '@/mock/agents'
+import { updatePromptConfig } from '@/api/agent'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const agentStore = useAgentStore()
 const agent = computed(() => agentStore.current)
 const prompt = ref('')
 const variables = ref<any[]>([])
-const versions = ref(mockPromptVersions)
+const versions = ref<any[]>([])
 const showVersionDrawer = ref(false)
 const loading = ref(false)
 
@@ -28,10 +28,17 @@ function initPrompt() {
 }
 
 async function handleSave() {
+  if (!agent.value) return
   loading.value = true
   try {
-    await agentStore.fetchAgentDetail(agent.value!.id)
-    ElMessage.success('Prompt 已保存')
+    const res = await updatePromptConfig(agent.value.id, {
+      systemPrompt: prompt.value,
+      promptVariables: variables.value,
+    })
+    if (res.code === 0) {
+      await agentStore.fetchAgentDetail(agent.value.id)
+      ElMessage.success('Prompt 已保存')
+    }
   } catch { ElMessage.error('保存失败') } finally { loading.value = false }
 }
 
