@@ -3,7 +3,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useAgentStore } from '@/stores/agent'
-import { sendMessageSse } from '@/api/session'
+import { sendMessageSse, getSessionList } from '@/api/session'
 import { EXECUTION_MODE_MAP } from '@/utils/constants'
 import { formatTokens, formatCost } from '@/utils/format'
 import type { Message, ExecutionStep, ExecutionMode } from '@/types/session'
@@ -20,10 +20,22 @@ const showSteps = ref(true)
 let abortController: AbortController | null = null
 
 onMounted(async () => {
+  // 切换 Agent 时清空旧会话
+  sessionStore.clearSession()
   await agentStore.fetchAgentDetail(agentId.value)
   const sid = route.query.sessionId
   if (sid) {
+    // 加载指定会话
     await sessionStore.fetchSessionDetail(Number(sid))
+  } else {
+    // 自动加载该 Agent 最近一次会话
+    try {
+      const res = await getSessionList(agentId.value, { page: 1, pageSize: 1 })
+      if (res.code === 0 && res.data?.list?.length) {
+        const latestSession = res.data.list[0]
+        await sessionStore.fetchSessionDetail(latestSession.sessionId)
+      }
+    } catch { /* 新 Agent 还没有会话，正常 */ }
   }
   await nextTick()
   scrollToBottom()

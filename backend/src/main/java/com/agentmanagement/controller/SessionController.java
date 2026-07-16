@@ -220,6 +220,7 @@ public class SessionController {
 
         // 1. System prompt
         StringBuilder systemPrompt = new StringBuilder();
+        log.info("Agent systemPrompt=[{}], isEmpty={}", agent.getSystemPrompt(), agent.getSystemPrompt() == null || agent.getSystemPrompt().isEmpty());
         if (agent.getSystemPrompt() != null && !agent.getSystemPrompt().isEmpty()) {
             systemPrompt.append(agent.getSystemPrompt());
         }

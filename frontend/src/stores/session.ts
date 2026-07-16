@@ -23,8 +23,15 @@ export const useSessionStore = defineStore('session', () => {
     const res = await sessionApi.getSessionMessages(sessionId)
     if (res.code === 0) {
       currentSessionId.value = sessionId
-      messages.value = res.data.messages
+      messages.value = res.data.messages || []
     }
+  }
+
+  /** 清空当前会话状态（切换 Agent 时调用） */
+  function clearSession() {
+    currentSessionId.value = null
+    messages.value = []
+    isStreaming.value = false
   }
 
   async function sendMessage(agentId: number, content: string) {
@@ -67,5 +74,5 @@ export const useSessionStore = defineStore('session', () => {
     executionMode.value = mode
   }
 
-  return { currentSessionId, messages, isStreaming, executionMode, createSession, fetchSessionDetail, sendMessage, addAssistantMessage, updateLastAssistantContent, stopStreaming, setExecutionMode }
+  return { currentSessionId, messages, isStreaming, executionMode, createSession, fetchSessionDetail, clearSession, sendMessage, addAssistantMessage, updateLastAssistantContent, stopStreaming, setExecutionMode }
 })
