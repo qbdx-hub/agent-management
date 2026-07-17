@@ -98,7 +98,8 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
         LambdaQueryWrapper<Session> wrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getAgentId, agentId)
                 .eq(Session::getWorkspaceId, workspaceId)
-                .eq(Session::getCreatedBy, userId)
+                .and(w -> w.eq(Session::getCreatedBy, userId)
+                        .or().isNull(Session::getCreatedBy))
                 .orderByDesc(Session::getCreatedAt);
 
         Page<Session> result = sessionMapper.selectPage(pageParam, wrapper);
@@ -116,7 +117,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
 
         Session session = sessionMapper.selectById(sessionId);
         if (session == null || !workspaceId.equals(session.getWorkspaceId())
-                || !userId.equals(session.getCreatedBy())) {
+                || (session.getCreatedBy() != null && !userId.equals(session.getCreatedBy()))) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
@@ -143,7 +144,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
 
         Session session = sessionMapper.selectById(sessionId);
         if (session == null || !workspaceId.equals(session.getWorkspaceId())
-                || !userId.equals(session.getCreatedBy())) {
+                || (session.getCreatedBy() != null && !userId.equals(session.getCreatedBy()))) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         if (!"active".equals(session.getStatus())) {
@@ -175,7 +176,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
 
         Session session = sessionMapper.selectById(sessionId);
         if (session == null || !workspaceId.equals(session.getWorkspaceId())
-                || !userId.equals(session.getCreatedBy())) {
+                || (session.getCreatedBy() != null && !userId.equals(session.getCreatedBy()))) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
@@ -193,7 +194,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
 
         Session session = sessionMapper.selectById(sessionId);
         if (session == null || !workspaceId.equals(session.getWorkspaceId())
-                || !userId.equals(session.getCreatedBy())) {
+                || (session.getCreatedBy() != null && !userId.equals(session.getCreatedBy()))) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 

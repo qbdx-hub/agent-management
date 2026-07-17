@@ -74,7 +74,8 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
         return baseMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeBase>()
                         .eq(KnowledgeBase::getWorkspaceId, workspaceId)
-                        .eq(KnowledgeBase::getCreatedBy, userId)
+                        .and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
+                                .or().isNull(KnowledgeBase::getCreatedBy))
                         .orderByDesc(KnowledgeBase::getUpdatedAt));
     }
 
@@ -85,7 +86,8 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
                 new LambdaQueryWrapper<KnowledgeBase>()
                         .eq(KnowledgeBase::getId, id)
                         .eq(KnowledgeBase::getWorkspaceId, workspaceId)
-                        .eq(KnowledgeBase::getCreatedBy, userId));
+                        .and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
+                                .or().isNull(KnowledgeBase::getCreatedBy)));
         if (kb == null) {
             throw new BusinessException(ResultCode.KB_NOT_FOUND);
         }

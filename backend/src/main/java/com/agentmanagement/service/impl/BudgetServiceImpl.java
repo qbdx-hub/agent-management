@@ -50,7 +50,8 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
         Long userId = SecurityUtils.currentUserId();
         LambdaQueryWrapper<Budget> qw = new LambdaQueryWrapper<Budget>();
         qw.eq(Budget::getWorkspaceId, workspaceId);
-        qw.eq(Budget::getCreatedBy, userId);
+        qw.and(w -> w.eq(Budget::getCreatedBy, userId)
+                .or().isNull(Budget::getCreatedBy));
         qw.orderByDesc(Budget::getCreatedAt);
 
         List<Budget> budgets = budgetMapper.selectList(qw);
@@ -340,7 +341,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
         Long workspaceId = SecurityUtils.currentWorkspaceId();
         Long userId = SecurityUtils.currentUserId();
         if (budget == null || !workspaceId.equals(budget.getWorkspaceId())
-                || !userId.equals(budget.getCreatedBy())) {
+                || (budget.getCreatedBy() != null && !userId.equals(budget.getCreatedBy()))) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         return budget;

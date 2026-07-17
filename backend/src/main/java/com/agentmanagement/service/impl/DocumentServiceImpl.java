@@ -98,7 +98,8 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         return baseMapper.selectList(
                 new LambdaQueryWrapper<Document>()
                         .eq(Document::getKnowledgeBaseId, kbId)
-                        .eq(Document::getUploadedBy, userId)
+                        .and(w -> w.eq(Document::getUploadedBy, userId)
+                                .or().isNull(Document::getUploadedBy))
                         .orderByDesc(Document::getCreatedAt));
     }
 
@@ -110,7 +111,8 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
                 new LambdaQueryWrapper<Document>()
                         .eq(Document::getId, docId)
                         .eq(Document::getKnowledgeBaseId, kbId)
-                        .eq(Document::getUploadedBy, userId));
+                        .and(w -> w.eq(Document::getUploadedBy, userId)
+                                .or().isNull(Document::getUploadedBy)));
         if (doc == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "文档不存在");
         }

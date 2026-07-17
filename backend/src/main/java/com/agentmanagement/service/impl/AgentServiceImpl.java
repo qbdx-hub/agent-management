@@ -66,8 +66,9 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         Page<Agent> page = new Page<Agent>(form.getPage(), form.getPageSize());
         LambdaQueryWrapper<Agent> qw = new LambdaQueryWrapper<Agent>();
         qw.eq(Agent::getWorkspaceId, workspaceId);
-        // 按账户隔离：只显示当前用户创建的 Agent
-        qw.eq(Agent::getCreatedBy, currentUserId);
+        // 按账户隔离：当前用户创建的 + 历史未设置 createdBy 的
+        qw.and(w -> w.eq(Agent::getCreatedBy, currentUserId)
+                .or().isNull(Agent::getCreatedBy));
         if (StringUtils.hasText(form.getKeyword())) {
             // keyword 同时匹配 name 与 description
             qw.and(w -> w.like(Agent::getName, form.getKeyword())
