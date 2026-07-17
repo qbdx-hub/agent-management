@@ -37,8 +37,8 @@ public class AiServiceImpl implements AiService {
             .build();
 
     @Override
-    public String chatCompletion(String baseUrl, String apiKey, String model,
-                                 List<Map<String, String>> messages) {
+    public ChatCompletionResult chatCompletion(String baseUrl, String apiKey, String model,
+                                               List<Map<String, String>> messages) {
         String url = normalizeUrl(baseUrl) + "/chat/completions";
         String body = buildChatBody(model, messages, false);
 
@@ -59,7 +59,22 @@ public class AiServiceImpl implements AiService {
             }
             String respBody = response.body().string();
             JsonNode root = objectMapper.readTree(respBody);
-            return root.path("choices").path(0).path("message").path("content").asText("");
+            String content = root.path("choices").path(0).path("message").path("content").asText("");
+
+            // 解析 token usage
+            JsonNode usage = root.path("usage");
+            Long promptTokens = usage.path("prompt_tokens").isMissingNode() ? null : usage.path("prompt_tokens").asLong();
+            Long completionTokens = usage.path("completion_tokens").isMissingNode() ? null : usage.path("completion_tokens").asLong();
+            Long totalTokens = usage.path("total_tokens").isMissingNode() ? null : usage.path("total_tokens").asLong();
+            // DeepSeek 等兼容 API 可能返回 prompt_tokens_details.cached_tokens
+            Long cachedTokens = null;
+            JsonNode cachedNode = usage.path("prompt_tokens_details").path("cached_tokens");
+            if (!cachedNode.isMissingNode()) {
+                cachedTokens = cachedNode.asLong();
+            }
+            log.info("AI chat usage: prompt={}, completion={}, total={}, cached={}", promptTokens, completionTokens, totalTokens, cachedTokens);
+
+            return new ChatCompletionResult(content, promptTokens, completionTokens, totalTokens, cachedTokens);
         } catch (IOException e) {
             log.error("AI chat completion 异常", e);
             throw new RuntimeException("AI 调用异常: " + e.getMessage(), e);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCostOverview, getCostBreakdown, getCostTrend, getCostRecords } from '@/api/cost'
@@ -25,6 +25,30 @@ function barColor(percent: number) {
   return '#67c23a'
 }
 
+// 计算趋势柱状图高度
+const maxCost = computed(() => {
+  if (trend.value.length === 0) return 0
+  return Math.max(...trend.value.map(p => p.cost))
+})
+
+function getBarHeight(cost: number): string {
+  const minHeight = 8  // 最小高度，确保可见
+  const maxHeight = 100 // 最大高度（百分比）
+  const chartHeight = 120 // 图表总高度 px
+  const minPx = minHeight
+  const maxPx = chartHeight - 20 // 留出标签空间
+
+  if (cost <= 0) return minPx + 'px'
+  if (maxCost.value <= 0) return minPx + 'px'
+
+  // 使用对数缩放，让小值也能有明显差异
+  const ratio = cost / maxCost.value
+  // 线性映射到 minPx-maxPx 范围
+  const height = Math.max(minPx, Math.min(maxPx, ratio * maxPx))
+
+  return Math.round(height) + 'px'
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -38,7 +62,7 @@ async function loadData() {
     overview.value = overviewRes.data ?? overview.value
     byModel.value = modelRes.data ?? []
     byAgent.value = agentRes.data ?? []
-    trend.value = (trendRes.data as any)?.series ?? trendRes.data ?? []
+    trend.value = trendRes.data ?? []
     records.value = recordsRes.data?.list ?? []
   } catch (e: any) {
     ElMessage.error(e.message || '加载成本数据失败')
@@ -108,7 +132,12 @@ onMounted(loadData)
           <el-empty v-if="trend.length === 0" description="暂无数据" :image-size="48" />
           <div v-else class="trend-chart">
             <div v-for="(point, idx) in trend.slice(-14)" :key="idx" class="trend-bar-col">
-              <div class="trend-bar" :style="{ height: Math.max(2, point.cost / 55 * 100) + 'px' }" :title="formatCost(point.cost)"></div>
+              <div
+                class="trend-bar"
+                :class="{ 'trend-bar--has-value': point.cost > 0 }"
+                :style="{ height: getBarHeight(point.cost) }"
+                :title="formatCost(point.cost)"
+              ></div>
               <div class="trend-label">{{ point.date.split('-')[2] }}</div>
             </div>
           </div>
@@ -140,8 +169,23 @@ onMounted(loadData)
 .breakdown-item { padding: 10px 0; border-bottom: 1px solid var(--el-border-color-lighter); }
 .breakdown-item:last-child { border-bottom: none; }
 .breakdown-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-.trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+.trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 4px 0; }
 .trend-bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
-.trend-bar { width: 100%; background: var(--el-color-primary); border-radius: 2px 2px 0 0; min-height: 2px; }
+.trend-bar {
+  width: 100%;
+  background: var(--el-border-color-lighter);
+  border-radius: 3px 3px 0 0;
+  min-height: 8px;
+  transition: all 0.3s ease;
+}
+.trend-bar--has-value {
+  background: linear-gradient(180deg, var(--el-color-primary) 0%, var(--el-color-primary-light-3) 100%);
+  box-shadow: 0 -2px 4px rgba(64, 158, 255, 0.2);
+}
+.trend-bar:hover {
+  opacity: 0.85;
+  transform: scaleY(1.05);
+  transform-origin: bottom;
+}
 .trend-label { font-size: 10px; color: #909399; }
 </style>

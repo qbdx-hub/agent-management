@@ -112,6 +112,17 @@ public class Agent implements Serializable {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> outputSchema;
 
+    // ============ Token 价格配置（美元 / 百万 token） ============
+
+    /** 输入 token 单价（美元/百万 token） */
+    private BigDecimal inputPricePerMillion;
+
+    /** 缓存命中输入 token 单价（美元/百万 token） */
+    private BigDecimal cachedInputPricePerMillion;
+
+    /** 输出 token 单价（美元/百万 token） */
+    private BigDecimal outputPricePerMillion;
+
     // ============ 统计（冗余字段，定期同步） ============
 
     private Long totalSessions;

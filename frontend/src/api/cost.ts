@@ -20,8 +20,8 @@ export async function getCostBreakdown(dimension: string, period: string = 'this
   return res.data
 }
 
-export async function getCostTrend(period: string = '30d', granularity: string = 'day'): Promise<ApiResponse<{ series: CostTrendPoint[] }>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: { series: mockCostTrend } }
+export async function getCostTrend(period: string = '30d', granularity: string = 'day'): Promise<ApiResponse<CostTrendPoint[]>> {
+  if (USE_MOCK) return { code: 0, message: 'ok', data: mockCostTrend }
   const res = await http.get('/cost/trend', { params: { period, granularity } })
   return res.data
 }

@@ -183,6 +183,15 @@ async function handleSearch() {
   }
 }
 
+/** 将检索关键词在内容中高亮显示 */
+function highlightKeyword(content: string, query: string): string {
+  if (!content || !query) return content
+  // 转义正则特殊字符
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
+  return content.replace(regex, '<span class="highlight">$1</span>')
+}
+
 async function handleProcessDocument(docId: number) {
   try {
     const res = await processDocument(kbId, docId)
@@ -310,7 +319,7 @@ function statusLabel(status: string) {
               <span>{{ r.documentTitle }} · Chunk #{{ r.chunkIndex }}</span>
               <el-tag size="small">{{ (r.score * 100).toFixed(0) }}%</el-tag>
             </div>
-            <div class="result-content text-muted">{{ r.content }}</div>
+            <div class="result-content text-muted" v-html="highlightKeyword(r.content, searchQuery)"></div>
           </div>
           <el-empty v-if="searchResults.length === 0 && searchQuery" description="没有找到相关内容" />
         </el-tab-pane>
@@ -341,6 +350,7 @@ function statusLabel(status: string) {
 .search-result { padding: 12px; border: 1px solid var(--el-border-color-lighter); border-radius: 6px; margin-bottom: 12px; }
 .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 500; }
 .result-content { font-size: 13px; line-height: 1.6; }
+.result-content :deep(.highlight) { background: #fef08a; color: #b45309; padding: 1px 2px; border-radius: 2px; }
 
 /* 上传进度区域 */
 .upload-progress {

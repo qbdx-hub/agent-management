@@ -64,6 +64,14 @@ public class AgentUpdateForm {
 
     private List<Long> knowledgeBaseIds;
 
+    // ===== Token 价格配置（美元/百万 token） =====
+
+    private BigDecimal inputPricePerMillion;
+
+    private BigDecimal cachedInputPricePerMillion;
+
+    private BigDecimal outputPricePerMillion;
+
     // ===== 执行配置 =====
 
     private Integer maxIterations;

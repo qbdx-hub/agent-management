@@ -96,6 +96,10 @@ export interface AgentDetail {
   aiBaseUrl?: string
   aiApiKeyMasked?: string
   aiModel?: string
+  /** Token 价格配置（美元/百万 token） */
+  inputPricePerMillion?: number
+  cachedInputPricePerMillion?: number
+  outputPricePerMillion?: number
   config: AgentConfig
   stats: AgentStats
 }
@@ -135,6 +139,10 @@ export interface UpdateAgentDTO {
   workingWindow?: number
   longTermEnabled?: number
   knowledgeBaseIds?: number[]
+  /** Token 价格配置 */
+  inputPricePerMillion?: number
+  cachedInputPricePerMillion?: number
+  outputPricePerMillion?: number
   /** 执行配置 */
   maxIterations?: number
   timeout?: number

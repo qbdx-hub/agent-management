@@ -48,6 +48,11 @@ public class AgentVO implements Serializable {
     private String aiApiKeyMasked;
     private String aiModel;
 
+    /** Token 价格配置（美元/百万 token） */
+    private BigDecimal inputPricePerMillion;
+    private BigDecimal cachedInputPricePerMillion;
+    private BigDecimal outputPricePerMillion;
+
     private Config config;
 
     private Stats stats;

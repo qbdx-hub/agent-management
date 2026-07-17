@@ -12,6 +12,7 @@ const form = ref({
   name: '', description: '', avatar: '', tags: [] as string[],
   modelProvider: '', modelName: '', temperature: 0.7, maxTokens: 4096, topP: 0.95,
   aiBaseUrl: '', aiApiKey: '', aiModel: '',
+  inputPricePerMillion: 0.14, cachedInputPricePerMillion: 0.014, outputPricePerMillion: 0.28,
 })
 
 const selectedProvider = ref(mockModelProviders[0])
@@ -29,6 +30,9 @@ function initForm() {
     aiBaseUrl: agent.value.aiBaseUrl || '',
     aiApiKey: '', // 不回显完整 key
     aiModel: agent.value.aiModel || '',
+    inputPricePerMillion: agent.value.inputPricePerMillion ?? 0.14,
+    cachedInputPricePerMillion: agent.value.cachedInputPricePerMillion ?? 0.014,
+    outputPricePerMillion: agent.value.outputPricePerMillion ?? 0.28,
   }
   selectedProvider.value = mockModelProviders.find(p => p.key === cfg.modelProvider) || mockModelProviders[0]
 }
@@ -53,6 +57,9 @@ async function handleSave() {
       topP: form.value.topP,
       aiBaseUrl: form.value.aiBaseUrl,
       aiModel: form.value.aiModel,
+      inputPricePerMillion: form.value.inputPricePerMillion,
+      cachedInputPricePerMillion: form.value.cachedInputPricePerMillion,
+      outputPricePerMillion: form.value.outputPricePerMillion,
     }
     // 只有用户输入了新 key 才提交
     if (form.value.aiApiKey) {
@@ -79,6 +86,20 @@ async function handleSave() {
       </el-form-item>
       <el-form-item label="模型名称">
         <el-input v-model="form.aiModel" placeholder="gpt-4o / deepseek-chat / ..." />
+      </el-form-item>
+
+      <el-divider content-position="left">Token 价格（美元 / 百万 token）</el-divider>
+      <el-form-item label="输入价格">
+        <el-input-number v-model="form.inputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
+        <div class="form-tip">普通输入 token 单价（prompt tokens）</div>
+      </el-form-item>
+      <el-form-item label="缓存命中价格">
+        <el-input-number v-model="form.cachedInputPricePerMillion" :min="0" :max="1000" :step="0.001" :precision="4" />
+        <div class="form-tip">命中上下文缓存的输入 token 单价（通常为输入价的 10%~50%）</div>
+      </el-form-item>
+      <el-form-item label="输出价格">
+        <el-input-number v-model="form.outputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
+        <div class="form-tip">输出 token 单价（completion tokens）</div>
       </el-form-item>
 
       <el-divider content-position="left">基础信息</el-divider>

@@ -161,6 +161,10 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         update.setWorkingWindow(form.getWorkingWindow());
         update.setLongTermEnabled(form.getLongTermEnabled());
         update.setKnowledgeBaseIds(form.getKnowledgeBaseIds());
+        // Token 价格配置
+        update.setInputPricePerMillion(form.getInputPricePerMillion());
+        update.setCachedInputPricePerMillion(form.getCachedInputPricePerMillion());
+        update.setOutputPricePerMillion(form.getOutputPricePerMillion());
         // 执行配置
         update.setMaxIterations(form.getMaxIterations());
         update.setTimeout(form.getTimeout());
@@ -230,6 +234,10 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         vo.setAiBaseUrl(agent.getAiBaseUrl());
         vo.setAiApiKeyMasked(maskApiKey(agent.getAiApiKey()));
         vo.setAiModel(agent.getAiModel());
+        // Token 价格配置
+        vo.setInputPricePerMillion(agent.getInputPricePerMillion());
+        vo.setCachedInputPricePerMillion(agent.getCachedInputPricePerMillion());
+        vo.setOutputPricePerMillion(agent.getOutputPricePerMillion());
 
         AgentVO.Config config = new AgentVO.Config();
         config.setModelProvider(agent.getModelProvider());
