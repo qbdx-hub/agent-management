@@ -46,9 +46,11 @@ public class ToolServiceImpl extends ServiceImpl<ToolMapper, Tool> implements To
     @Override
     public PageResult<ToolSummaryVO> pageTools(ToolQueryForm form) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long currentUserId = SecurityUtils.currentUserId();
         Page<Tool> page = new Page<Tool>(form.getPage(), form.getPageSize());
         LambdaQueryWrapper<Tool> qw = new LambdaQueryWrapper<Tool>();
         qw.eq(Tool::getWorkspaceId, workspaceId);
+        qw.eq(Tool::getCreatedBy, currentUserId);
         if (StringUtils.hasText(form.getKeyword())) {
             // keyword 同时匹配 name 与 displayName
             qw.and(w -> w.like(Tool::getName, form.getKeyword())
@@ -144,7 +146,9 @@ public class ToolServiceImpl extends ServiceImpl<ToolMapper, Tool> implements To
     private Tool requireToolInWorkspace(Long id) {
         Tool tool = toolMapper.selectById(id);
         Long workspaceId = SecurityUtils.currentWorkspaceId();
-        if (tool == null || !workspaceId.equals(tool.getWorkspaceId())) {
+        Long currentUserId = SecurityUtils.currentUserId();
+        if (tool == null || !workspaceId.equals(tool.getWorkspaceId())
+                || !currentUserId.equals(tool.getCreatedBy())) {
             throw new BusinessException(ResultCode.TOOL_NOT_FOUND);
         }
         return tool;

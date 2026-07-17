@@ -48,18 +48,21 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public MonitorOverviewVO getOverview(String period) {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
         MonitorOverviewVO vo = new MonitorOverviewVO();
 
         // 活跃 Agent 数（status = published）
         LambdaQueryWrapper<Agent> agentWrapper = new LambdaQueryWrapper<Agent>()
                 .eq(Agent::getWorkspaceId, workspaceId)
+                .eq(Agent::getCreatedBy, userId)
                 .eq(Agent::getStatus, "published");
         vo.setActiveAgentCount(agentMapper.selectCount(agentWrapper).intValue());
 
         // 执行中任务数（session status = active）
         LambdaQueryWrapper<Session> activeWrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .eq(Session::getStatus, "active");
         vo.setRunningTaskCount(sessionMapper.selectCount(activeWrapper).intValue());
 
@@ -67,6 +70,7 @@ public class MonitorServiceImpl implements MonitorService {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LambdaQueryWrapper<Session> todayWrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, todayStart);
         long todayCalls = sessionMapper.selectCount(todayWrapper);
         vo.setTodayCallCount(todayCalls);
@@ -74,12 +78,14 @@ public class MonitorServiceImpl implements MonitorService {
         // 成功率：今日 session 中 completed / (completed + error)
         LambdaQueryWrapper<Session> completedWrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, todayStart)
                 .eq(Session::getStatus, "completed");
         long completedCount = sessionMapper.selectCount(completedWrapper);
 
         LambdaQueryWrapper<Session> errorWrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, todayStart)
                 .eq(Session::getStatus, "error");
         long errorCount = sessionMapper.selectCount(errorWrapper);
@@ -90,6 +96,7 @@ public class MonitorServiceImpl implements MonitorService {
         // 平均延迟 & P99
         List<Session> todaySessions = sessionMapper.selectList(new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, todayStart)
                 .isNotNull(Session::getLatency)
                 .orderByDesc(Session::getLatency));
@@ -113,6 +120,7 @@ public class MonitorServiceImpl implements MonitorService {
         long totalTokens = 0;
         for (Session s : sessionMapper.selectList(new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, todayStart)
                 .isNotNull(Session::getTotalTokens))) {
             totalTokens += s.getTotalTokens() != null ? s.getTotalTokens() : 0;
@@ -124,6 +132,7 @@ public class MonitorServiceImpl implements MonitorService {
         LocalDateTime yesterdayEnd = todayStart;
         LambdaQueryWrapper<Session> yesterdayWrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, yesterdayStart)
                 .lt(Session::getCreatedAt, yesterdayEnd);
         long yesterdayCalls = sessionMapper.selectCount(yesterdayWrapper);
@@ -142,6 +151,7 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public TokenTrendSummaryVO getTokenTrend(String period, String granularity) {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
         // 根据 period 确定时间范围
         LocalDateTime startTime;
@@ -160,6 +170,7 @@ public class MonitorServiceImpl implements MonitorService {
         // 查询时间范围内的 sessions
         List<Session> sessions = sessionMapper.selectList(new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .ge(Session::getCreatedAt, startTime)
                 .isNotNull(Session::getTotalTokens));
 
@@ -233,10 +244,12 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public List<AgentHealthVO> getAgentHealth() {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
-        // 获取工作空间下所有 published 状态的 Agent
+        // 获取当前用户的所有非归档 Agent
         List<Agent> agents = agentMapper.selectList(new LambdaQueryWrapper<Agent>()
                 .eq(Agent::getWorkspaceId, workspaceId)
+                .eq(Agent::getCreatedBy, userId)
                 .ne(Agent::getStatus, "archived"));
 
         LocalDateTime yesterday = LocalDateTime.now().minusHours(24);
@@ -250,6 +263,7 @@ public class MonitorServiceImpl implements MonitorService {
             // 最近 24h 调用次数
             LambdaQueryWrapper<Session> sessionWrapper = new LambdaQueryWrapper<Session>()
                     .eq(Session::getWorkspaceId, workspaceId)
+                    .eq(Session::getCreatedBy, userId)
                     .eq(Session::getAgentId, agent.getId())
                     .ge(Session::getCreatedAt, yesterday);
             long callCount = sessionMapper.selectCount(sessionWrapper);
@@ -302,12 +316,20 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public List<ErrorLogVO> getErrorLogs(Integer page, Integer pageSize) {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
         if (page == null || page < 1) page = 1;
         if (pageSize == null || pageSize < 1) pageSize = 20;
 
+        // 获取当前用户的 Agent ID 列表
+        List<Long> agentIds = agentMapper.selectList(new LambdaQueryWrapper<Agent>()
+                .eq(Agent::getWorkspaceId, workspaceId)
+                .eq(Agent::getCreatedBy, userId))
+                .stream().map(Agent::getId).collect(Collectors.toList());
+
         LambdaQueryWrapper<ErrorLog> wrapper = new LambdaQueryWrapper<ErrorLog>()
                 .eq(ErrorLog::getWorkspaceId, workspaceId)
+                .in(agentIds.isEmpty() ? false : true, ErrorLog::getAgentId, agentIds)
                 .orderByDesc(ErrorLog::getOccurredAt)
                 .last("LIMIT " + pageSize + " OFFSET " + (page - 1) * pageSize);
 
@@ -335,9 +357,11 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public List<AlertRuleVO> getAlertRules() {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
         List<AlertRule> rules = alertRuleMapper.selectList(new LambdaQueryWrapper<AlertRule>()
                 .eq(AlertRule::getWorkspaceId, workspaceId)
+                .eq(AlertRule::getCreatedBy, userId)
                 .orderByAsc(AlertRule::getId));
 
         List<AlertRuleVO> result = new ArrayList<>();
@@ -390,12 +414,20 @@ public class MonitorServiceImpl implements MonitorService {
     @Override
     public List<AlertRecordVO> getAlertRecords(Integer page, Integer pageSize) {
         Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+        Long userId = com.agentmanagement.security.SecurityUtils.currentUserId();
 
         if (page == null || page < 1) page = 1;
         if (pageSize == null || pageSize < 1) pageSize = 20;
 
+        // 获取当前用户的告警规则 ID 列表
+        List<Long> ruleIds = alertRuleMapper.selectList(new LambdaQueryWrapper<AlertRule>()
+                .eq(AlertRule::getWorkspaceId, workspaceId)
+                .eq(AlertRule::getCreatedBy, userId))
+                .stream().map(AlertRule::getId).collect(Collectors.toList());
+
         LambdaQueryWrapper<AlertRecord> wrapper = new LambdaQueryWrapper<AlertRecord>()
                 .eq(AlertRecord::getWorkspaceId, workspaceId)
+                .in(ruleIds.isEmpty() ? false : true, AlertRecord::getRuleId, ruleIds)
                 .orderByDesc(AlertRecord::getTriggeredAt)
                 .last("LIMIT " + pageSize + " OFFSET " + (page - 1) * pageSize);
 
