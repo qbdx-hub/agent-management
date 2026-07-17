@@ -86,6 +86,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
     @Override
     public PageResult<SessionSummaryVO> pageSessions(Long agentId, int page, int pageSize) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         // 校验 Agent 归属
         Agent agent = agentMapper.selectById(agentId);
@@ -97,6 +98,7 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
         LambdaQueryWrapper<Session> wrapper = new LambdaQueryWrapper<Session>()
                 .eq(Session::getAgentId, agentId)
                 .eq(Session::getWorkspaceId, workspaceId)
+                .eq(Session::getCreatedBy, userId)
                 .orderByDesc(Session::getCreatedAt);
 
         Page<Session> result = sessionMapper.selectPage(pageParam, wrapper);
@@ -110,9 +112,11 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
     @Override
     public SessionDetailVO getSessionMessages(Long sessionId) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         Session session = sessionMapper.selectById(sessionId);
-        if (session == null || !workspaceId.equals(session.getWorkspaceId())) {
+        if (session == null || !workspaceId.equals(session.getWorkspaceId())
+                || !userId.equals(session.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
@@ -138,7 +142,8 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
         Long userId = SecurityUtils.currentUserId();
 
         Session session = sessionMapper.selectById(sessionId);
-        if (session == null || !workspaceId.equals(session.getWorkspaceId())) {
+        if (session == null || !workspaceId.equals(session.getWorkspaceId())
+                || !userId.equals(session.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         if (!"active".equals(session.getStatus())) {
@@ -166,9 +171,11 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
     @Override
     public void stopSession(Long sessionId) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         Session session = sessionMapper.selectById(sessionId);
-        if (session == null || !workspaceId.equals(session.getWorkspaceId())) {
+        if (session == null || !workspaceId.equals(session.getWorkspaceId())
+                || !userId.equals(session.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 
@@ -182,9 +189,11 @@ public class SessionServiceImpl extends ServiceImpl<SessionMapper, Session> impl
     @Transactional
     public void deleteSession(Long sessionId) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         Session session = sessionMapper.selectById(sessionId);
-        if (session == null || !workspaceId.equals(session.getWorkspaceId())) {
+        if (session == null || !workspaceId.equals(session.getWorkspaceId())
+                || !userId.equals(session.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
 

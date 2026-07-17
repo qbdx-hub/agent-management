@@ -7,6 +7,7 @@ import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.form.KnowledgeBaseCreateForm;
 import com.agentmanagement.mapper.DocumentMapper;
 import com.agentmanagement.mapper.KnowledgeBaseMapper;
+import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.KnowledgeBaseService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -69,18 +70,22 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
 
     @Override
     public List<KnowledgeBase> listByWorkspace(Long workspaceId) {
+        Long userId = SecurityUtils.currentUserId();
         return baseMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeBase>()
                         .eq(KnowledgeBase::getWorkspaceId, workspaceId)
+                        .eq(KnowledgeBase::getCreatedBy, userId)
                         .orderByDesc(KnowledgeBase::getUpdatedAt));
     }
 
     @Override
     public KnowledgeBase getByIdChecked(Long id, Long workspaceId) {
+        Long userId = SecurityUtils.currentUserId();
         KnowledgeBase kb = baseMapper.selectOne(
                 new LambdaQueryWrapper<KnowledgeBase>()
                         .eq(KnowledgeBase::getId, id)
-                        .eq(KnowledgeBase::getWorkspaceId, workspaceId));
+                        .eq(KnowledgeBase::getWorkspaceId, workspaceId)
+                        .eq(KnowledgeBase::getCreatedBy, userId));
         if (kb == null) {
             throw new BusinessException(ResultCode.KB_NOT_FOUND);
         }

@@ -6,6 +6,7 @@ import com.agentmanagement.entity.Document;
 import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.mapper.DocumentMapper;
 import com.agentmanagement.mapper.KnowledgeBaseMapper;
+import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.DocumentService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -93,19 +94,23 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
 
     @Override
     public List<Document> listByKnowledgeBase(Long kbId) {
+        Long userId = SecurityUtils.currentUserId();
         return baseMapper.selectList(
                 new LambdaQueryWrapper<Document>()
                         .eq(Document::getKnowledgeBaseId, kbId)
+                        .eq(Document::getUploadedBy, userId)
                         .orderByDesc(Document::getCreatedAt));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long docId, Long kbId) {
+        Long userId = SecurityUtils.currentUserId();
         Document doc = baseMapper.selectOne(
                 new LambdaQueryWrapper<Document>()
                         .eq(Document::getId, docId)
-                        .eq(Document::getKnowledgeBaseId, kbId));
+                        .eq(Document::getKnowledgeBaseId, kbId)
+                        .eq(Document::getUploadedBy, userId));
         if (doc == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "文档不存在");
         }

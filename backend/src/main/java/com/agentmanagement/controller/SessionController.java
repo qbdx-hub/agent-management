@@ -101,10 +101,12 @@ public class SessionController {
     public SseEmitter sendMessageSse(@PathVariable("sessionId") Long sessionId,
                                      @Valid @RequestBody SendMessageForm form) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long currentUserId = SecurityUtils.currentUserId();
 
         // 1. 校验会话
         Session session = sessionMapper.selectById(sessionId);
-        if (session == null || !workspaceId.equals(session.getWorkspaceId())) {
+        if (session == null || !workspaceId.equals(session.getWorkspaceId())
+                || !currentUserId.equals(session.getCreatedBy())) {
             SseEmitter emitter = new SseEmitter();
             try {
                 emitter.send(SseEmitter.event().name("error").data("{\"error\":\"会话不存在\"}"));
@@ -136,8 +138,6 @@ public class SessionController {
 
         // 4. 创建 SSE emitter
         SseEmitter emitter = new SseEmitter(120_000L); // 2 分钟超时
-        // 捕获当前用户ID（子线程无法访问 ThreadLocal SecurityContext）
-        Long currentUserId = SecurityUtils.currentUserId();
 
         // 发送 thinking 事件
         try {

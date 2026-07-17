@@ -58,6 +58,8 @@ public class Budget implements Serializable {
     /** 是否启用：0-否 1-是 */
     private Integer enabled;
 
+    private Long createdBy;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

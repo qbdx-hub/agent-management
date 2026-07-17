@@ -47,8 +47,10 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public List<BudgetVO> listBudgets() {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
         LambdaQueryWrapper<Budget> qw = new LambdaQueryWrapper<Budget>();
         qw.eq(Budget::getWorkspaceId, workspaceId);
+        qw.eq(Budget::getCreatedBy, userId);
         qw.orderByDesc(Budget::getCreatedAt);
 
         List<Budget> budgets = budgetMapper.selectList(qw);
@@ -62,9 +64,11 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public BudgetVO createBudget(BudgetForm form) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         Budget entity = new Budget();
         entity.setWorkspaceId(workspaceId);
+        entity.setCreatedBy(userId);
         entity.setName(form.getName());
         entity.setScope(form.getScope());
         entity.setScopeId(form.getScopeId());
@@ -103,6 +107,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public CostOverviewVO getCostOverview(String period) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
         LocalDate now = LocalDate.now();
 
         // 时间范围
@@ -118,6 +123,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
 
         LambdaQueryWrapper<CostRecord> qw = new LambdaQueryWrapper<CostRecord>();
         qw.eq(CostRecord::getWorkspaceId, workspaceId);
+        qw.eq(CostRecord::getUserId, userId);
         qw.between(CostRecord::getRecordedAt, rangeStart, rangeEnd);
         List<CostRecord> records = costRecordMapper.selectList(qw);
 
@@ -185,6 +191,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public List<CostBreakdownVO> getCostBreakdown(String dimension, String period) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
         LocalDate now = LocalDate.now();
         LocalDateTime rangeStart = now.withDayOfMonth(1).atStartOfDay();
         LocalDateTime rangeEnd = now.atTime(LocalTime.MAX);
@@ -203,6 +210,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
         List<Map<String, Object>> rows = costRecordMapper.selectMaps(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<CostRecord>()
                         .eq("workspace_id", workspaceId)
+                        .eq("user_id", userId)
                         .between("recorded_at", rangeStart, rangeEnd)
                         .select(groupField + " as label",
                                 "SUM(cost) as total_cost",
@@ -242,6 +250,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public List<CostTrendVO> getCostTrend(String period, String granularity) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
         LocalDate now = LocalDate.now();
 
         // 时间范围
@@ -252,6 +261,7 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
         List<Map<String, Object>> rows = costRecordMapper.selectMaps(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<CostRecord>()
                         .eq("workspace_id", workspaceId)
+                        .eq("user_id", userId)
                         .between("recorded_at", rangeStart, rangeEnd)
                         .select("DATE(recorded_at) as date",
                                 "SUM(cost) as total_cost",
@@ -293,10 +303,12 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     @Override
     public PageResult<CostRecordVO> getCostRecords(int page, int pageSize) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long userId = SecurityUtils.currentUserId();
 
         Page<CostRecord> pageParam = new Page<>(page, pageSize);
         LambdaQueryWrapper<CostRecord> qw = new LambdaQueryWrapper<CostRecord>();
         qw.eq(CostRecord::getWorkspaceId, workspaceId);
+        qw.eq(CostRecord::getUserId, userId);
         qw.orderByDesc(CostRecord::getRecordedAt);
 
         Page<CostRecord> result = costRecordMapper.selectPage(pageParam, qw);
@@ -326,7 +338,9 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
     private Budget requireBudgetInWorkspace(Long id) {
         Budget budget = budgetMapper.selectById(id);
         Long workspaceId = SecurityUtils.currentWorkspaceId();
-        if (budget == null || !workspaceId.equals(budget.getWorkspaceId())) {
+        Long userId = SecurityUtils.currentUserId();
+        if (budget == null || !workspaceId.equals(budget.getWorkspaceId())
+                || !userId.equals(budget.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         return budget;
