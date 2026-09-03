@@ -8,14 +8,12 @@ import {
   getKnowledgeBase,
   listDocuments,
   uploadDocument,
-  uploadDocumentByChunk,
   deleteDocument,
   searchKnowledge,
   processDocument,
   validateFile,
   getFileExtension,
   MAX_FILE_SIZE,
-  CHUNK_SIZE,
 } from '@/api/knowledge'
 import type { KnowledgeBase, Document } from '@/api/knowledge'
 
@@ -74,7 +72,7 @@ function beforeUpload(file: File): boolean {
 
 /**
  * 覆盖默认上传行为（el-upload :http-request 钩子）
- * 根据文件大小自动选择：小文件直接上传，大文件分片上传
+ * 直接上传（后端 multipart 限制 50MB，前端 validateFile 同步校验）
  */
 async function handleUpload(options: any): Promise<void> {
   const file = options.file as File
@@ -91,18 +89,9 @@ async function handleUpload(options: any): Promise<void> {
   uploadingFileName.value = file.name
 
   try {
-    let res
-    // 大于分片阈值时使用分片上传
-    if (file.size > CHUNK_SIZE) {
-      res = await uploadDocumentByChunk(kbId, file, (percent) => {
-        uploadProgress.value = percent
-      })
-    } else {
-      // 小文件直接上传
-      res = await uploadDocument(kbId, file, (percent) => {
-        uploadProgress.value = percent
-      })
-    }
+    const res = await uploadDocument(kbId, file, (percent) => {
+      uploadProgress.value = percent
+    })
 
     if (res.code === 0) {
       ElMessage.success(`"${file.name}" 上传成功，开始处理...`)

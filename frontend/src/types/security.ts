@@ -10,23 +10,8 @@ export interface Role {
   permissions: string[]
 }
 
-// ==================== 审计日志 ====================
-
-export interface AuditLogItem {
-  logId: number
-  userId: number
-  userName: string
-  action: string
-  actionLabel: string
-  resource: string
-  detail: string
-  ip: string
-  userAgent: string
-  result: 'success' | 'failure'
-  createdAt: string
-}
-
 // ==================== 审批 ====================
+// 审计日志类型见 api/audit.ts（audit_log 表结构）。
 
 export interface ApprovalRule {
   id: number
@@ -40,24 +25,17 @@ export interface ApprovalRule {
 
 export interface ApprovalItem {
   approvalId: number
-  ruleName: string
-  applicantId: number
-  applicantName: string
+  ruleName?: string
+  applicantId?: number
+  applicantName?: string
+  approverName?: string
+  resourceType?: string
+  resourceId?: number
+  resourceName?: string
   action: string
   detail: string
   status: 'pending' | 'approved' | 'rejected'
+  reason?: string
   createdAt: string
-}
-
-// ==================== API Key ====================
-
-export interface ApiKey {
-  id: number
-  provider: string
-  keyName: string
-  apiKeyMasked: string
-  isDefault: boolean
-  lastUsedAt: string | null
-  createdBy: number
-  createdAt: string
+  resolvedAt?: string | null
 }

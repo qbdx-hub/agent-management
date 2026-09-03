@@ -276,7 +276,7 @@ Agent 回复完成 → 写入 message(role=assistant)
     ↓ 保存
 调用 API → 后端写入 workflow_node + workflow_edge（先删后插）
     ↓ 执行
-前端调用执行 API → 后端创建 workflow_run，按拓扑顺序执行各节点
+前端调用执行 API → 后端创建 workflow_run，异步执行：从 start 节点沿 workflow_edge 遍历（环检测 + 100 步上限），审批节点暂停等待人工处理
     ↓ 执行完成
 后端更新 workflow_run 状态 + node_results JSON
 ```

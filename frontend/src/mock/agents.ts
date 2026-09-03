@@ -1,4 +1,4 @@
-import type { AgentSummary, AgentDetail, PromptVersion } from '@/types/agent'
+import type { AgentSummary, AgentDetail } from '@/types/agent'
 
 export const mockAgents: AgentSummary[] = [
   {
@@ -91,50 +91,3 @@ export const mockAgentDetail: AgentDetail = {
   },
 }
 
-export const mockPromptVersions: PromptVersion[] = [
-  {
-    versionId: 8, versionNumber: 'v8',
-    systemPrompt: '你是一个资深代码审查专家。\n当用户提交代码时，你需要：\n1. 检查 {{aspect}} 方面的问题\n2. 按严重程度分类\n3. 给出具体的改进建议',
-    promptVariables: [
-      { name: 'language', label: '语言', type: 'string', defaultValue: 'Java', required: true },
-      { name: 'aspect', label: '审查维度', type: 'select', options: ['安全性', '性能', '可读性', '全面'], defaultValue: '全面', required: true },
-    ],
-    changeNote: '新增审查维度变量', changedBy: 1, changerName: '张三', changedAt: '2026-07-14T09:30:00+08:00',
-  },
-  {
-    versionId: 7, versionNumber: 'v7',
-    systemPrompt: '你是一个代码审查专家。\n1. 检查代码质量\n2. 给出改进建议',
-    promptVariables: [{ name: 'language', label: '语言', type: 'string', defaultValue: 'Java', required: true }],
-    changeNote: '简化 prompt 结构', changedBy: 1, changerName: '张三', changedAt: '2026-07-12T10:00:00+08:00',
-  },
-  {
-    versionId: 6, versionNumber: 'v6',
-    systemPrompt: '你是代码审查机器人，擅长发现代码中的 bug 和性能问题。',
-    promptVariables: [],
-    changeNote: '初始版本', changedBy: 1, changerName: '张三', changedAt: '2026-07-01T09:00:00+08:00',
-  },
-]
-
-export const mockModelProviders = [
-  {
-    key: 'openai', name: 'OpenAI',
-    models: [
-      { name: 'gpt-4o', displayName: 'GPT-4o', maxTokens: 128000, pricing: { inputPer1k: 0.0025, outputPer1k: 0.01 } },
-      { name: 'gpt-4o-mini', displayName: 'GPT-4o Mini', maxTokens: 128000, pricing: { inputPer1k: 0.00015, outputPer1k: 0.0006 } },
-    ],
-  },
-  {
-    key: 'anthropic', name: 'Anthropic',
-    models: [
-      { name: 'claude-opus-4-8', displayName: 'Claude Opus 4.8', maxTokens: 200000, pricing: { inputPer1k: 0.015, outputPer1k: 0.075 } },
-      { name: 'claude-sonnet-4-6', displayName: 'Claude Sonnet 4.6', maxTokens: 200000, pricing: { inputPer1k: 0.003, outputPer1k: 0.015 } },
-      { name: 'claude-haiku-4-5', displayName: 'Claude Haiku 4.5', maxTokens: 200000, pricing: { inputPer1k: 0.0008, outputPer1k: 0.004 } },
-    ],
-  },
-  {
-    key: 'deepseek', name: 'DeepSeek',
-    models: [
-      { name: 'deepseek-v4', displayName: 'DeepSeek V4', maxTokens: 128000, pricing: { inputPer1k: 0.00014, outputPer1k: 0.00028 } },
-    ],
-  },
-]

@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { registerTool } from '@/api/tool'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { registerTool, updateTool, getToolDetail } from '@/api/tool'
 import { TOOL_CATEGORY_MAP } from '@/utils/constants'
 import { ElMessage } from 'element-plus'
-import type { ToolCategory, ToolEndpoint, ToolParameter } from '@/types/tool'
+import type { ToolCategory, ToolEndpoint, ToolParameter, ToolDetail as ToolDetailType } from '@/types/tool'
 import ToolIcon from '@/components/ToolIcon.vue'
 
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+/** 编辑模式：/tools/register?edit={id}，复用注册表单 */
+const editingId = route.query.edit ? Number(route.query.edit) : null
+const isEdit = !!editingId
 
 const form = reactive({
   name: '', displayName: '', description: '', category: 'search' as string, icon: '08-settings',
@@ -32,27 +36,64 @@ function removeParameter(idx: number) { form.parameters.splice(idx, 1) }
 
 const categories = Object.entries(TOOL_CATEGORY_MAP).map(([value, label]) => ({ value, label }))
 
+/** 编辑模式：加载工具详情回填表单 */
+onMounted(async () => {
+  if (!editingId) return
+  try {
+    const res = await getToolDetail(editingId)
+    const t = res.data as ToolDetailType | undefined
+    if (res.code === 0 && t) {
+      form.name = t.name
+      form.displayName = t.displayName
+      form.description = t.description || ''
+      form.category = t.category
+      form.icon = t.icon || '08-settings'
+      form.endpoint.url = t.endpoint?.url || ''
+      form.endpoint.method = t.endpoint?.method || 'POST'
+      form.endpoint.headers = { ...(t.endpoint?.headers || {}) }
+      form.endpoint.timeoutMs = t.endpoint?.timeoutMs || 10000
+      form.parameters = (t.parameters || []).map(p => ({ ...p }))
+      form.responseMapping = t.responseMapping || ''
+      form.credentialRef = t.credentialRef || ''
+      form.retryOnFail = t.retryOnFail !== false
+      form.maxRetries = t.maxRetries ?? 2
+    }
+  } catch {
+    ElMessage.error('加载工具详情失败')
+  }
+})
+
+function buildPayload() {
+  return {
+    name: form.name, displayName: form.displayName, description: form.description,
+    category: form.category as ToolCategory, icon: form.icon, type: 'api' as const,
+    endpoint: {
+      url: form.endpoint.url,
+      method: form.endpoint.method as ToolEndpoint['method'],
+      headers: form.endpoint.headers,
+      timeoutMs: form.endpoint.timeoutMs,
+    },
+    parameters: form.parameters,
+    responseMapping: form.responseMapping,
+    credentialRef: form.credentialRef,
+    retryOnFail: form.retryOnFail,
+    maxRetries: form.maxRetries,
+  }
+}
+
 async function handleSubmit() {
   if (!form.name || !form.displayName) { ElMessage.warning('请填写工具名称'); return }
   loading.value = true
   try {
-    const res = await registerTool({
-      name: form.name, displayName: form.displayName, description: form.description,
-      category: form.category as ToolCategory, icon: form.icon, type: 'api',
-      endpoint: {
-        url: form.endpoint.url,
-        method: form.endpoint.method as ToolEndpoint['method'],
-        headers: form.endpoint.headers,
-        timeoutMs: form.endpoint.timeoutMs,
-      },
-      parameters: form.parameters,
-      responseMapping: form.responseMapping,
-      credentialRef: form.credentialRef,
-      retryOnFail: form.retryOnFail,
-      maxRetries: form.maxRetries,
-    })
-    ElMessage.success('工具注册成功')
-    router.push(`/tools/${res.data.id}`)
+    if (isEdit) {
+      await updateTool(editingId!, buildPayload())
+      ElMessage.success('工具已更新')
+      router.push(`/tools/${editingId}`)
+    } else {
+      const res = await registerTool(buildPayload())
+      ElMessage.success('工具注册成功')
+      router.push(`/tools/${res.data.id}`)
+    }
   } catch {
     // 错误已由 axios 响应拦截器统一 ElMessage 提示
   } finally {
@@ -63,7 +104,7 @@ async function handleSubmit() {
 
 <template>
   <div class="tool-register-page">
-    <div class="page-header"><h2>注册工具</h2><el-button @click="router.push('/tools')">返回列表</el-button></div>
+    <div class="page-header"><h2>{{ isEdit ? '编辑工具' : '注册工具' }}</h2><el-button @click="router.push('/tools')">返回列表</el-button></div>
     <el-card>
       <el-form label-width="120px" style="max-width:800px">
         <el-divider content-position="left">基础信息</el-divider>
@@ -125,7 +166,7 @@ async function handleSubmit() {
         <el-form-item v-if="form.retryOnFail" label="最大重试"><el-input-number v-model="form.maxRetries" :min="1" :max="5" /></el-form-item>
 
         <el-form-item>
-          <el-button type="primary" :loading="loading" @click="handleSubmit">注册工具</el-button>
+          <el-button type="primary" :loading="loading" @click="handleSubmit">{{ isEdit ? '保存修改' : '注册工具' }}</el-button>
           <el-button @click="router.push('/tools')">取消</el-button>
         </el-form-item>
       </el-form>

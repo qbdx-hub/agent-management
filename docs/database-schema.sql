@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `avatar` VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
   `nickname` VARCHAR(50) DEFAULT NULL COMMENT '昵称',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 0-禁用 1-启用',
+  `preferences` JSON DEFAULT NULL COMMENT '用户偏好JSON(默认模型/温度/最大输出/回复风格/通知开关)',
   `last_login_at` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -122,6 +123,11 @@ CREATE TABLE IF NOT EXISTS `agent` (
   `max_tokens` INT DEFAULT 4096 COMMENT '最大Token数',
   `top_p` DECIMAL(3,2) DEFAULT 1.00 COMMENT 'Top P',
 
+  -- AI 连接配置（真实调用大模型使用）
+  `ai_base_url` VARCHAR(500) DEFAULT NULL COMMENT 'AI API Base URL(如 https://api.openai.com/v1)',
+  `ai_api_key` VARCHAR(500) DEFAULT NULL COMMENT 'AI API Key',
+  `ai_model` VARCHAR(100) DEFAULT NULL COMMENT 'AI 模型名称(如 gpt-4o, deepseek-chat)',
+
   -- 提示词配置
   `system_prompt` TEXT DEFAULT NULL COMMENT '系统提示词',
   `prompt_variables` JSON DEFAULT NULL COMMENT '提示词变量JSON',
@@ -139,6 +145,11 @@ CREATE TABLE IF NOT EXISTS `agent` (
   `reflection_enabled` TINYINT DEFAULT 1 COMMENT '是否启用反思',
   `reflection_depth` INT DEFAULT 1 COMMENT '反思深度',
   `output_schema` JSON DEFAULT NULL COMMENT '输出格式Schema JSON',
+
+  -- Token 价格配置（美元/百万 token），对话计费使用
+  `input_price_per_million` DECIMAL(10,4) DEFAULT NULL COMMENT '输入token单价(美元/百万token)',
+  `cached_input_price_per_million` DECIMAL(10,4) DEFAULT NULL COMMENT '缓存命中输入token单价(美元/百万token)',
+  `output_price_per_million` DECIMAL(10,4) DEFAULT NULL COMMENT '输出token单价(美元/百万token)',
 
   -- 统计(冗余字段，定期同步)
   `total_sessions` BIGINT DEFAULT 0 COMMENT '总会话数',
@@ -448,10 +459,12 @@ CREATE TABLE IF NOT EXISTS `budget` (
   `meltdown_enabled` TINYINT DEFAULT 0 COMMENT '超支熔断是否启用',
   `notify_channels` JSON DEFAULT NULL COMMENT '通知渠道JSON',
   `enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `created_by` BIGINT DEFAULT NULL COMMENT '创建者用户ID',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  KEY `idx_workspace_id` (`workspace_id`)
+  KEY `idx_workspace_id` (`workspace_id`),
+  KEY `idx_created_by` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='预算配置表';
 
 -- ============================================================
@@ -673,7 +686,24 @@ CREATE TABLE IF NOT EXISTS `document` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文档表';
 
 -- ============================================================
--- 29. 活动日志表
+-- 29. 文档分块表（存储分块文本 + 向量 embedding，RAG 检索核心表）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `document_chunk` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分块ID',
+  `document_id` BIGINT NOT NULL COMMENT '文档ID',
+  `knowledge_base_id` BIGINT NOT NULL COMMENT '知识库ID',
+  `chunk_index` INT NOT NULL COMMENT '块序号(从0开始)',
+  `content` TEXT NOT NULL COMMENT '文本内容',
+  `token_count` INT DEFAULT 0 COMMENT 'Token数(估算)',
+  `embedding` JSON DEFAULT NULL COMMENT '向量JSON数组[float,float,...]',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_document_id` (`document_id`),
+  KEY `idx_kb_id` (`knowledge_base_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文档分块表';
+
+-- ============================================================
+-- 30. 活动日志表
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `activity_log` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '日志ID',
@@ -691,7 +721,7 @@ CREATE TABLE IF NOT EXISTS `activity_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动日志表';
 
 -- ============================================================
--- 30. 模型定价参考表(可选)
+-- 31. 模型定价参考表(可选)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `model_pricing` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
@@ -706,6 +736,23 @@ CREATE TABLE IF NOT EXISTS `model_pricing` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_provider_model` (`provider`, `model_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型定价参考表';
+
+-- ============================================================
+-- 32. API 密钥表（移动端「API 密钥管理」；来自 V6，明文不落库，限 5 个/用户）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `api_key` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '密钥ID',
+  `user_id` BIGINT NOT NULL COMMENT '所属用户ID',
+  `name` VARCHAR(64) NOT NULL COMMENT '密钥名称',
+  `key_hash` CHAR(64) NOT NULL COMMENT 'SHA-256摘要(hex)，明文不落库',
+  `mask` VARCHAR(32) NOT NULL COMMENT '展示掩码(如 sk-my-****-****-8f2a)',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'active' COMMENT '状态：active/disabled',
+  `last_used_at` DATETIME DEFAULT NULL COMMENT '最后使用时间',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_key_hash` (`key_hash`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='API密钥表';
 
 
 -- ============================================================
@@ -751,15 +798,31 @@ INSERT INTO `approval_rule` (`workspace_id`, `name`, `description`, `resource_ty
 (1, 'Agent发布审批', '发布Agent到生产环境需要审批', 'agent', 'publish', 'admin', 1),
 (1, '工具注册审批', '注册新工具需要审批', 'tool', 'register', 'admin', 1);
 
--- 默认模型定价
+-- 默认模型定价（2026-09 与 V7 迁移保持一致；价格为美元/千token，国内厂商按 ¥/7.2 折算，
+-- display_name 保留人民币参考价（每百万 token）；max_tokens 存上下文窗口）
 INSERT INTO `model_pricing` (`provider`, `model_name`, `display_name`, `max_tokens`, `input_price_per_1k`, `output_price_per_1k`) VALUES
-('openai', 'gpt-4o', 'GPT-4o', 128000, 0.002500, 0.010000),
+('deepseek', 'deepseek-v4-flash', 'DeepSeek V4-Flash（¥1/¥2 每百万）', 1000000, 0.000139, 0.000278),
+('deepseek', 'deepseek-v4-pro',   'DeepSeek V4-Pro（¥3/¥6 每百万）',   1000000, 0.000417, 0.000833),
+('zhipu', 'glm-5.3',       'GLM-5.3 旗舰（¥8/¥28 每百万）',   1000000, 0.001111, 0.003889),
+('zhipu', 'glm-5.3-flash', 'GLM-5.3-Flash 普惠（¥0.8/¥2.8）', 1000000, 0.000111, 0.000389),
+('zhipu', 'glm-5.2',       'GLM-5.2 长程任务（¥8/¥28 每百万）', 1000000, 0.001111, 0.003889),
+('zhipu', 'glm-4.7-flash', 'GLM-4.7-Flash（免费）',            200000, 0.000000, 0.000000),
+('moonshot', 'kimi-k3',        'Kimi K3 旗舰（¥20/¥100 每百万）',   1048576, 0.002778, 0.013889),
+('moonshot', 'kimi-k2.7-code', 'Kimi K2.7 Code（¥6.5/¥27 每百万）',  262144, 0.000903, 0.003750),
+('moonshot', 'kimi-k2.6',      'Kimi K2.6（¥6.5/¥27 每百万）',       262144, 0.000903, 0.003750),
+('minimax', 'MiniMax-M3',   'MiniMax M3（¥2.1/¥8.4 每百万·五折）', 1000000, 0.000292, 0.001167),
+('minimax', 'MiniMax-M2.7', 'MiniMax M2.7（¥2.1/¥8.4 每百万）',     1000000, 0.000292, 0.001167),
+('xiaomi', 'mimo-v2.5',     'MiMo V2.5 全模态（¥1/¥2 每百万）', 1000000, 0.000139, 0.000278),
+('xiaomi', 'mimo-v2.5-pro', 'MiMo V2.5 Pro（¥3/¥6 每百万）',    1000000, 0.000417, 0.000833),
+('openai', 'gpt-5',       'GPT-5',       400000, 0.001250, 0.010000),
+('openai', 'gpt-5-mini',  'GPT-5 Mini',  400000, 0.000250, 0.002000),
+('openai', 'gpt-5-nano',  'GPT-5 Nano',  400000, 0.000050, 0.000400),
+('openai', 'gpt-4o',      'GPT-4o',      128000, 0.002500, 0.010000),
 ('openai', 'gpt-4o-mini', 'GPT-4o Mini', 128000, 0.000150, 0.000600),
-('openai', 'gpt-3.5-turbo', 'GPT-3.5 Turbo', 16385, 0.000500, 0.001500),
-('anthropic', 'claude-sonnet-4-6', 'Claude Sonnet 4.6', 200000, 0.003000, 0.015000),
-('anthropic', 'claude-haiku-4-5', 'Claude Haiku 4.5', 200000, 0.000800, 0.004000),
-('deepseek', 'deepseek-chat', 'DeepSeek Chat', 65536, 0.000140, 0.000280),
-('deepseek', 'deepseek-reasoner', 'DeepSeek Reasoner', 65536, 0.000550, 0.002190);
+('anthropic', 'claude-opus-5',    'Claude Opus 5',     1000000, 0.005000, 0.025000),
+('anthropic', 'claude-sonnet-5',  'Claude Sonnet 5',   1000000, 0.003000, 0.015000),
+('anthropic', 'claude-sonnet-4-6', 'Claude Sonnet 4.6', 1000000, 0.003000, 0.015000),
+('anthropic', 'claude-haiku-4-5',  'Claude Haiku 4.5',   200000, 0.001000, 0.005000);
 
 -- ============================================================
 -- 完成

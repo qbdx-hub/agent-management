@@ -93,8 +93,11 @@ onMounted(loadData)
     <el-card class="mb-24">
       <div style="display:flex;align-items:center;gap:16px">
         <span style="white-space:nowrap">预算使用</span>
-        <el-progress :percentage="Number(overview.budgetPercent)" :color="barColor(Number(overview.budgetPercent))" style="flex:1" />
-        <span class="text-muted">{{ formatCost(overview.totalCost) }} / {{ formatCost(overview.budgetLimit) }}</span>
+        <template v-if="overview.budgetLimit">
+          <el-progress :percentage="Number(overview.budgetPercent)" :color="barColor(Number(overview.budgetPercent))" style="flex:1" />
+          <span class="text-muted">{{ formatCost(overview.totalCost) }} / {{ formatCost(overview.budgetLimit) }}</span>
+        </template>
+        <span v-else class="text-muted">未设置月度预算，可在预算配置页添加</span>
       </div>
     </el-card>
 

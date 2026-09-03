@@ -9,6 +9,9 @@ export interface WorkspaceItem {
 }
 
 export interface WorkspaceSettings {
+  /** 空间名称/描述（保存时随设置一起提交；读取走 workspace store） */
+  name?: string
+  description?: string
   defaultModelProvider: string
   sessionRetentionDays: number
   autoArchiveDays: number

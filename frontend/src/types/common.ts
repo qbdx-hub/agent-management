@@ -37,6 +37,3 @@ export interface BreadcrumbItem {
   title: string
   path?: string
 }
-
-/** 状态标签 */
-export type StatusType = 'success' | 'warning' | 'danger' | 'info' | ''

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { VueFlow, useVueFlow, Position, Handle, type Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -10,7 +10,7 @@ import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
-import { getWorkflow, saveWorkflow } from '@/api/workflow'
+import { getWorkflow, saveWorkflow, runWorkflow } from '@/api/workflow'
 import { getToolList } from '@/api/tool'
 import { useAgentStore } from '@/stores/agent'
 import type { WorkflowStatus } from '@/types/workflow'
@@ -156,8 +156,131 @@ function removeSelectedNode() {
   selectedNode.value = null
 }
 
-function handleRun() {
-  ElMessage.info('运行功能待接入')
+// ==================== Agent 节点任务指令 / 工具节点参数 ====================
+
+const selectedNodeConfig = computed<any>(() => {
+  if (!selectedData.value) return null
+  if (!selectedData.value.config) selectedData.value.config = {}
+  return selectedData.value.config
+})
+
+/** 工具节点 params 的 JSON 文本（失焦时解析回写） */
+const toolParamsText = computed<string>({
+  get: () => JSON.stringify(selectedNodeConfig.value?.params ?? {}, null, 2),
+  set: (v: string) => {
+    try {
+      const parsed = v.trim() ? JSON.parse(v) : {}
+      selectedNodeConfig.value.params = parsed
+    } catch {
+      // 输入过程中暂不合法，失焦校验
+    }
+  },
+})
+
+function onToolParamsBlur() {
+  try {
+    JSON.parse(toolParamsText.value || '{}')
+  } catch {
+    ElMessage.warning('参数不是合法 JSON，请检查格式')
+  }
+}
+
+// ==================== 条件节点分支配置 ====================
+
+/** 选中条件节点的出边（供属性面板逐条编辑条件） */
+const conditionBranches = computed<any[]>(() => {
+  if (selectedData.value?.nodeType !== 'condition') return []
+  const nodeId = selectedNode.value?.id
+  return edges.value.filter(e => e.source === nodeId)
+})
+
+function branchLabel(edge: any) {
+  const target = nodes.value.find(n => n.id === edge.target)
+  return target?.data?.label || edge.target
+}
+function branchOp(edge: any): string {
+  return (edge.data?.condition?.op as string) || ''
+}
+function setBranchOp(edge: any, op: string) {
+  if (!edge.data) edge.data = {}
+  edge.data.condition = op ? { ...(edge.data.condition || {}), op } : null
+}
+function branchValue(edge: any): string {
+  return (edge.data?.condition?.value as string) || ''
+}
+function setBranchValue(edge: any, value: string) {
+  if (!edge.data) edge.data = {}
+  if (edge.data.condition) edge.data.condition.value = value
+}
+
+// ==================== 运行 ====================
+
+const running = ref(false)
+
+async function handleRun() {
+  // 运行前自动保存，保证后端拿到最新画布
+  const saved = await doSave()
+  if (!saved) return
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '输入本次运行的任务描述（将作为 question 传给 Agent 节点），可留空',
+      `运行「${form.name}」`,
+      { confirmButtonText: '开始运行', cancelButtonText: '取消', inputPlaceholder: '任务描述', inputValue: '' },
+    )
+    running.value = true
+    const res = await runWorkflow(workflowId, value && value.trim() ? { question: value.trim() } : {})
+    if (res.code === 0) {
+      ElMessage.success('已开始运行')
+      router.push(`/orchestration/${workflowId}/run/${res.data.runId}`)
+    }
+  } catch {
+    // 用户取消
+  } finally {
+    running.value = false
+  }
+}
+
+/** 保存画布；返回是否成功（handleRun 复用，不重复弹成功提示） */
+async function doSave(): Promise<boolean> {
+  if (!form.name.trim()) {
+    ElMessage.warning('请填写工作流名称')
+    return false
+  }
+  saving.value = true
+  try {
+    const res = await saveWorkflow(workflowId, {
+      name: form.name,
+      description: form.description,
+      status: form.status,
+      nodes: nodes.value.map(n => ({
+        nodeId: n.id,
+        type: (n.data as any)?.nodeType || 'agent',
+        label: (n.data as any)?.label || '',
+        agentId: (n.data as any)?.agentId,
+        toolId: (n.data as any)?.toolId,
+        config: (n.data as any)?.config,
+        positionX: n.position.x,
+        positionY: n.position.y,
+      })),
+      edges: edges.value.map(e => ({
+        edgeId: e.id,
+        sourceNodeId: e.source,
+        targetNodeId: e.target,
+        label: e.label as string | undefined,
+        condition: (e.data as any)?.condition,
+      })),
+    })
+    return res.code === 0
+  } catch {
+    // 错误已由 axios 响应拦截器统一提示
+    return false
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleSave() {
+  if (await doSave()) ElMessage.success('画布已保存')
 }
 
 async function load() {
@@ -195,43 +318,6 @@ async function load() {
   }
 }
 
-async function handleSave() {
-  if (!form.name.trim()) {
-    ElMessage.warning('请填写工作流名称')
-    return
-  }
-  saving.value = true
-  try {
-    const res = await saveWorkflow(workflowId, {
-      name: form.name,
-      description: form.description,
-      status: form.status,
-      nodes: nodes.value.map(n => ({
-        nodeId: n.id,
-        type: (n.data as any)?.nodeType || 'agent',
-        label: (n.data as any)?.label || '',
-        agentId: (n.data as any)?.agentId,
-        toolId: (n.data as any)?.toolId,
-        config: (n.data as any)?.config,
-        positionX: n.position.x,
-        positionY: n.position.y,
-      })),
-      edges: edges.value.map(e => ({
-        edgeId: e.id,
-        sourceNodeId: e.source,
-        targetNodeId: e.target,
-        label: e.label as string | undefined,
-        condition: (e.data as any)?.condition,
-      })),
-    })
-    if (res.code === 0) ElMessage.success('画布已保存')
-  } catch {
-    // 错误已由 axios 响应拦截器统一提示
-  } finally {
-    saving.value = false
-  }
-}
-
 onMounted(() => {
   load()
   // 拉取已有 Agent / 工具列表，供 agent/tool 节点选择关联
@@ -252,7 +338,7 @@ onMounted(() => {
       </div>
       <div style="display:flex;gap:8px">
         <el-button :loading="saving" @click="handleSave"><el-icon><Check /></el-icon> 保存</el-button>
-        <el-button type="primary" @click="handleRun"><el-icon><VideoPlay /></el-icon> 运行</el-button>
+        <el-button type="primary" :loading="running" @click="handleRun"><el-icon><VideoPlay /></el-icon> 运行</el-button>
       </div>
     </div>
 
@@ -322,6 +408,50 @@ onMounted(() => {
                 <el-option v-for="t in toolList" :key="t.id" :label="t.displayName" :value="t.id" />
               </el-select>
             </el-form-item>
+            <el-form-item v-if="selectedData?.nodeType === 'agent'" label="任务指令">
+              <el-input
+                v-model="selectedNodeConfig.prompt"
+                type="textarea"
+                :rows="4"
+                placeholder="本节点的任务描述；留空时使用运行输入的 question"
+              />
+            </el-form-item>
+            <el-form-item v-if="selectedData?.nodeType === 'tool'" label="请求参数">
+              <el-input
+                v-model="toolParamsText"
+                type="textarea"
+                :rows="4"
+                @blur="onToolParamsBlur"
+              />
+            </el-form-item>
+            <template v-if="selectedData?.nodeType === 'condition'">
+              <el-form-item v-for="(edge, i) in conditionBranches" :key="edge.id" :label="`分支${i + 1}`">
+                <div class="branch-editor">
+                  <div class="branch-target">→ {{ branchLabel(edge) }}</div>
+                  <div style="display:flex;gap:6px">
+                    <el-select :model-value="branchOp(edge)" placeholder="默认分支" size="small" style="width:120px" @change="(op: string) => setBranchOp(edge, op)">
+                      <el-option label="默认分支" value="" />
+                      <el-option label="包含文本" value="contains" />
+                      <el-option label="不含文本" value="not_contains" />
+                      <el-option label="恒真" value="always" />
+                    </el-select>
+                    <el-input
+                      v-if="branchOp(edge) === 'contains' || branchOp(edge) === 'not_contains'"
+                      :model-value="branchValue(edge)"
+                      size="small"
+                      placeholder="匹配文本"
+                      @input="(v: string) => setBranchValue(edge, v)"
+                    />
+                  </div>
+                </div>
+              </el-form-item>
+              <el-form-item v-if="!conditionBranches.length" label="">
+                <span class="text-muted" style="font-size:12px">该条件节点没有出边，请先在画布上拉线</span>
+              </el-form-item>
+              <el-form-item v-if="conditionBranches.length && !conditionBranches.some(e => !branchOp(e))" label="">
+                <span class="text-muted" style="font-size:12px">提示：建议保留一条「默认分支」，否则所有条件都不成立时运行会失败</span>
+              </el-form-item>
+            </template>
           </el-form>
           <el-button type="danger" plain size="small" style="width:100%" @click="removeSelectedNode">删除节点</el-button>
         </el-card>
@@ -363,6 +493,8 @@ onMounted(() => {
 
 <style scoped>
 .workflow-editor-page { max-width: 1400px; }
+.branch-editor { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.branch-target { font-size: 12px; color: var(--el-text-color-secondary); }
 .canvas-card { position: relative; }
 .vue-flow-canvas { height: 560px; }
 .wf-node {

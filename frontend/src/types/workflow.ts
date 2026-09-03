@@ -73,3 +73,40 @@ export interface WorkflowSaveDTO {
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
 }
+
+// ==================== 运行记录 ====================
+
+/** 运行状态：running=执行中 waiting_approval=等待审批 completed=完成 failed=失败 */
+export type WorkflowRunStatus = 'running' | 'waiting_approval' | 'completed' | 'failed'
+
+/** 单节点执行结果（后端 nodeResults JSON 数组项） */
+export interface WorkflowNodeResult {
+  nodeId: string
+  label?: string
+  type?: string
+  status: 'success' | 'error' | 'waiting' | 'rejected' | 'skipped'
+  output?: string
+  error?: string
+  durationMs?: number
+  sequence?: number
+  tokens?: number
+}
+
+/** 工作流运行记录（对应 workflow_run 表） */
+export interface WorkflowRun {
+  id: number
+  workflowId: number
+  status: WorkflowRunStatus
+  input?: Record<string, any>
+  output?: Record<string, any>
+  nodeResults: WorkflowNodeResult[]
+  error?: string
+  totalTokens?: number
+  totalCost?: number
+  duration?: number
+  startedAt?: string
+  endedAt?: string
+  triggeredBy?: number
+  triggeredByName?: string
+  createdAt?: string
+}

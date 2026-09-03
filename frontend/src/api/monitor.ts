@@ -1,6 +1,6 @@
 import http from './index'
 import type { ApiResponse, PaginatedData } from '@/types/common'
-import type { MonitorOverview, TokenTrendPoint, AgentHealthItem, ErrorLogItem, AlertRule, AlertRecord, TraceDetail } from '@/types/monitor'
+import type { MonitorOverview, TokenTrendPoint, AgentHealthItem, ErrorLogItem, AlertRule, AlertRecord } from '@/types/monitor'
 
 export async function getMonitorOverview(period: string = 'today'): Promise<ApiResponse<MonitorOverview>> {
   const res = await http.get<ApiResponse<MonitorOverview>>('/monitor/overview', { params: { period } })
@@ -19,11 +19,6 @@ export async function getAgentHealth(): Promise<ApiResponse<AgentHealthItem[]>> 
 
 export async function getErrorLogs(params: any): Promise<ApiResponse<PaginatedData<ErrorLogItem>>> {
   const res = await http.get<ApiResponse<PaginatedData<ErrorLogItem>>>('/monitor/errors', { params })
-  return res.data
-}
-
-export async function getTraceDetail(traceId: string): Promise<ApiResponse<TraceDetail>> {
-  const res = await http.get<ApiResponse<TraceDetail>>(`/monitor/trace/${traceId}`)
   return res.data
 }
 

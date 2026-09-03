@@ -1,6 +1,6 @@
 import http from './index'
 import type { ApiResponse, PaginatedData, PaginationQuery } from '@/types/common'
-import type { ToolSummary, ToolDetail, ToolRegisterDTO, ToolTestResult, ToolStats, MCPConfig } from '@/types/tool'
+import type { ToolSummary, ToolDetail, ToolRegisterDTO, ToolTestResult, ToolStats } from '@/types/tool'
 import { mockTools, mockToolDetail, mockToolTestSuccess, mockToolStats } from '@/mock/tools'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -46,12 +46,6 @@ export async function deleteTool(id: number): Promise<ApiResponse<null>> {
 export async function testTool(id: number, parameters: Record<string, any>): Promise<ApiResponse<ToolTestResult>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: mockToolTestSuccess }
   const res = await http.post<ApiResponse<ToolTestResult>>(`/tools/${id}/test`, { parameters })
-  return res.data
-}
-
-export async function registerMCP(data: MCPConfig): Promise<ApiResponse<any>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: { id: Date.now(), ...data } }
-  const res = await http.post<ApiResponse<any>>('/tools/mcp', data)
   return res.data
 }
 

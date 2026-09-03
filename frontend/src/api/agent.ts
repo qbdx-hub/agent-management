@@ -1,7 +1,7 @@
 import http from './index'
 import type { ApiResponse, PaginatedData, PaginationQuery } from '@/types/common'
-import type { AgentSummary, AgentDetail, CreateAgentDTO, UpdateAgentDTO, AgentStatus, ModelProvider, PromptVersion } from '@/types/agent'
-import { mockAgents, mockAgentDetail, mockPromptVersions, mockModelProviders } from '@/mock/agents'
+import type { AgentSummary, AgentDetail, CreateAgentDTO, UpdateAgentDTO, AgentStatus } from '@/types/agent'
+import { mockAgents, mockAgentDetail } from '@/mock/agents'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -49,27 +49,12 @@ export async function updateAgentStatus(id: number, status: AgentStatus): Promis
   return res.data
 }
 
-export async function cloneAgent(id: number, data: { name: string; copyConfig: boolean; copyTools: boolean }): Promise<ApiResponse<AgentDetail>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: { ...mockAgentDetail, id: Date.now(), name: data.name } }
-  const res = await http.post<ApiResponse<AgentDetail>>(`/agents/${id}/clone`, data)
-  return res.data
-}
-
 // ==================== Agent Config ====================
-
-export async function updateModelConfig(agentId: number, config: any): Promise<ApiResponse<null>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  return updateAgent(agentId, config)
-}
+// 说明：模型/Prompt/记忆/执行等配置没有独立路由，统一走 updateAgent（PUT /agents/{id}）全量更新。
 
 export async function updatePromptConfig(agentId: number, data: { systemPrompt: string; promptVariables: any[] }): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
   return updateAgent(agentId, data as any)
-}
-
-export async function getPromptVersions(_agentId: number): Promise<ApiResponse<PaginatedData<PromptVersion>>> {
-  // 后端暂无版本管理，返回空列表
-  return { code: 0, message: 'ok', data: { list: [], total: 0, page: 1, pageSize: 10 } }
 }
 
 export async function updateToolBindings(agentId: number, tools: { toolId: number; enabled: boolean }[]): Promise<ApiResponse<null>> {
@@ -81,15 +66,4 @@ export async function updateToolBindings(agentId: number, tools: { toolId: numbe
 export async function updateMemoryConfig(agentId: number, data: any): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
   return updateAgent(agentId, data)
-}
-
-export async function updateExecutionConfig(agentId: number, data: any): Promise<ApiResponse<null>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  return updateAgent(agentId, data)
-}
-
-export async function getModelProviders(): Promise<ApiResponse<ModelProvider[]>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: mockModelProviders }
-  // 后端暂无此接口，返回常用模型列表
-  return { code: 0, message: 'ok', data: mockModelProviders }
 }

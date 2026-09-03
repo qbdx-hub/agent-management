@@ -25,14 +25,6 @@ export const SESSION_STATUS_MAP: Record<string, string> = {
   error: '错误',
 }
 
-// ==================== 步骤类型 ====================
-
-export const STEP_TYPE_MAP: Record<string, string> = {
-  thinking: '思考',
-  tool_call: '工具调用',
-  tool_result: '工具返回',
-}
-
 // ==================== 执行模式 ====================
 
 export const EXECUTION_MODE_MAP: Record<string, string> = {
@@ -83,24 +75,4 @@ export const NOTIFY_CHANNEL_MAP: Record<string, string> = {
   wecom: '企业微信',
   email: '邮件',
   webhook: 'Webhook',
-}
-
-// ==================== 操作审计 ====================
-
-export const AUDIT_ACTION_MAP: Record<string, string> = {
-  'agent.create': '创建 Agent',
-  'agent.update': '更新 Agent',
-  'agent.delete': '删除 Agent',
-  'agent.status_change': '状态变更',
-  'tool.create': '注册工具',
-  'tool.delete': '删除工具',
-  'session.start': '开始会话',
-  'session.message': '发送消息',
-  'api_key.create': '添加 API Key',
-  'api_key.delete': '删除 API Key',
-  'member.invite': '邀请成员',
-  'member.remove': '移除成员',
-  'role.change': '角色变更',
-  'budget.update': '预算修改',
-  'security.policy': '安全策略变更',
 }

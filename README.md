@@ -59,16 +59,16 @@ agent-management/
 | 模块 | 前端路由 | 后端接口 | 说明 |
 |------|----------|----------|------|
 | 仪表盘 | `/dashboard` | - | Agent 卡片、统计概览、快速创建 |
-| Agent 管理 | `/agent/*` | `/api/agents` | Agent CRUD、模型配置、提示词编辑、工具绑定 |
-| 工具市场 | `/tool/*` | `/api/tools` | 工具注册、测试、MCP 支持 |
-| 会话控制台 | `/session/*` | `/api/sessions` | 实时对话、SSE 流式、执行步骤可视化 |
-| 监控中心 | `/monitor/*` | `/api/monitor` | Agent 健康、Token 趋势、告警规则 |
-| 费用管理 | `/cost/*` | `/api/costs` | 费用统计、预算配置 |
-| 安全审计 | `/security/*` | `/api/audit-logs` | 角色权限、审计日志、API Key |
-| 工作空间 | `/workspace/*` | - | 成员管理、工作空间设置 |
-| 编排引擎 | `/orchestration/*` | `/api/workflows` | 可视化工作流编辑器、多 Agent 协作 |
-| 知识库 | `/knowledge/*` | `/api/knowledge-bases` | 文档上传、向量化、RAG 检索 |
-| 认证 | `/login` | `/api/auth` | 登录、注册、JWT 认证 |
+| Agent 管理 | `/agents/*` | `/api/v1/agents` | Agent CRUD、模型配置、提示词编辑、工具绑定 |
+| 工具市场 | `/tools/*` | `/api/v1/tools` | 工具注册、连通性测试、调用统计（MCP 协议未实现，仅 API 工具） |
+| 会话控制台 | `/agents/:id/chat` | `/api/v1/sessions` | 实时对话、SSE 流式、执行步骤可视化 |
+| 监控中心 | `/monitor/*` | `/api/v1/monitor` | Agent 健康、Token 趋势、告警规则（定时评估） |
+| 费用管理 | `/cost/*` | `/api/v1/costs`、`/api/v1/budgets` | 费用统计、预算配置与熔断 |
+| 安全审计 | `/security/*` | `/api/v1/audit-logs`、`/api/v1/security` | 审计日志、角色权限、审批中心 |
+| 工作空间 | `/workspace/*` | `/api/v1/workspaces` | 成员管理、空间设置、空间动态 |
+| 编排引擎 | `/orchestration/*` | `/api/v1/workflows` | 可视化画布、工作流执行引擎（含人工审批暂停/恢复） |
+| 知识库 | `/knowledge/*` | `/api/v1/knowledge-bases` | 文档直传（≤50MB）、解析分块、向量化、RAG 检索 |
+| 认证 | `/login` | `/api/v1/auth` | 登录、注册、JWT 认证 |
 
 ## 快速开始
 
@@ -132,6 +132,11 @@ npm run dev
 
 ## 最近更新
 
+- **2026-09-03**: Agent 执行面升级为真实作用型（对标 Claude Code 类 harness 的工具面）：新增 8 个内置工具（builtin 类型，V9 迁移种子）——read_file/write_file/edit_file/list_files(glob)/search_files(grep)/run_command/web_search(必应)/web_fetch；执行于会话级沙箱（`agent.sandbox.root/session-{sessionId}`），路径越界拒绝、命令超时/输出上限、web_fetch 拒绝内网地址（SSRF 防护）；与 Function Calling 循环、SSE 步骤、tool_call_record 归因、市场统计完全打通；命令输出按系统字符集解码（中文 Windows cmd 为 GBK）
+- **2026-09-03**: 工具市场去除账户/工作空间隔离，所有账户可见、可绑定、可调用；预置 8 个免费免密钥常用 API 工具（天气查询、城市定位、汇率换算、文本翻译、世界时钟、短链接生成、GitHub 仓库搜索、每日一言，V8 迁移幂等种子）；修复 GET 工具查询串未 URL 编码导致中文/空格参数请求损坏的问题
+- **2026-09-03**: 会话对话接入原生 Function Calling：Agent 绑定的 API 工具自动转为 OpenAI tools 定义随请求下发，模型发起 tool_calls 后真实执行 HTTP（计入 tool_call_record 并归因 agent/session），结果以 role=tool 回传继续生成，SSE 新增 tool_call 事件、前端执行步骤实时展示；多轮工具调用受 Agent 最大迭代数约束（封顶 5 轮）。修复仅提交工具绑定时 `updateAgent` 生成空 SET 语句被 Druid 拒绝导致绑定保存 500 的问题；修复工作流工具节点在异步线程取 SecurityContext 崩溃
+- **2026-09-03**: 模型目录刷新为 2026 现役型号（V7 迁移）：DeepSeek V4-Flash/V4-Pro、智谱 GLM-5.3/5.3-Flash/5.2/4.7-Flash、Kimi K3/K2.7 Code/K2.6、MiniMax M3/M2.7、小米 MiMo V2.5/V2.5-Pro 及 GPT-5/Claude 5 系列，共 22 款；PC 端 Agent 创建/配置的供应商与模型下拉改接 `GET /models` 真实接口，选择供应商自动回填 OpenAI 兼容 Base URL、选择模型自动回填官方单价；修复工作流编排页打不开（重复 handleSave 编译错误）
+- **2026-09-02**: 功能整改一批（详见 docs/审计整改报告-2026-09-01.md）：SSE 真流式与线程池化、PDF/docx 真解析、工具绑定/连通性测试落库、监控指标接真数据、告警定时评估、预算真扣减与熔断、工作流执行引擎（拓扑执行/条件分支/审批暂停恢复）、空间与安全中心后端补齐、知识库上传改直传（≤50MB）、冗余代码清理
 - **2026-07-14**: 后端完整实现 - Agent/Tool/Workflow/KnowledgeBase/AuditLog/Session/Monitor/Cost 模块
 - **2026-07-14**: 前端接通后端真实接口，Vue Flow 编排画布
 - **2026-07-13**: 成本管理预算配置 + 监控面板 + 用户个人信息修改

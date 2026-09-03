@@ -103,6 +103,7 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '空间设置', icon: 'Setting' },
       },
       { path: 'workspace/members', name: 'MemberManage', component: () => import('@/views/workspace/MemberManage.vue'), meta: { title: '成员管理', hidden: true } },
+      { path: 'workspace/activity', name: 'ActivityFeed', component: () => import('@/views/workspace/ActivityFeed.vue'), meta: { title: '空间动态', hidden: true } },
     ],
   },
   // ===== 独立页面 =====

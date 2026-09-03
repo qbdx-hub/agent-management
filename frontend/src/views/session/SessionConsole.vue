@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useAgentStore } from '@/stores/agent'
-import { sendMessageSse, getSessionList } from '@/api/session'
+import { sendMessageSse, getSessionList, stopSession } from '@/api/session'
 import { EXECUTION_MODE_MAP } from '@/utils/constants'
 import { formatTokens, formatCost } from '@/utils/format'
 import type { Message, ExecutionStep, ExecutionMode } from '@/types/session'
@@ -18,6 +18,15 @@ const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const showSteps = ref(true)
 let abortController: AbortController | null = null
+
+// 组件卸载时中止进行中的 SSE 请求，避免切页后轮询定时器与 XHR 继续运行（资源泄漏）
+onUnmounted(() => {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
+  }
+  sessionStore.isStreaming = false
+})
 
 onMounted(async () => {
   // 切换 Agent 时清空旧会话
@@ -97,12 +106,35 @@ async function handleSend() {
           assistantMsg.content += data.content
           sessionStore.updateLastAssistantContent(assistantMsg.content)
           nextTick(scrollToBottom)
+        } else if (event === 'tool_call') {
+          // 后端真实执行了绑定工具：追加工具调用步骤（工具名/参数/结果/耗时）
+          const thinking = assistantMsg.steps![0]
+          if (thinking && thinking.status === 'running') {
+            thinking.status = 'success'
+            thinking.completedAt = new Date().toISOString()
+            thinking.durationMs = Date.now() - new Date(thinking.startedAt).getTime()
+          }
+          assistantMsg.steps!.push({
+            stepId: assistantMsg.steps!.length + 1,
+            sequence: assistantMsg.steps!.length + 1,
+            type: 'tool_call',
+            status: data.success ? 'success' : 'error',
+            toolName: data.toolName || '工具',
+            request: data.params || {},
+            response: data.result != null ? { output: String(data.result) } : undefined,
+            errorMessage: data.success ? undefined : String(data.error || data.result || '执行失败'),
+            startedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            durationMs: data.durationMs || 0,
+          })
+          nextTick(scrollToBottom)
         } else if (event === 'done') {
+          // 后端 done 事件携带真实 usage 与费用；缺失时才按字符数估算兜底
           assistantMsg.tokenUsage = {
-            input: Math.floor(text.length * 1.5),
-            output: Math.floor(assistantMsg.content.length * 1.2),
-            total: Math.floor((text.length + assistantMsg.content.length) * 1.3),
-            cost: 0.003,
+            input: data.usage?.input ?? Math.floor(text.length * 1.5),
+            output: data.usage?.output ?? Math.floor(assistantMsg.content.length * 1.2),
+            total: data.usage?.total ?? Math.floor((text.length + assistantMsg.content.length) * 1.3),
+            cost: data.cost ?? 0,
           }
           sessionStore.isStreaming = false
           abortController = null
@@ -133,10 +165,14 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-function stopStreaming() {
+async function stopStreaming() {
   if (abortController) {
     abortController.abort()
     abortController = null
+  }
+  // 通知后端终止执行（会话状态落库为 stopped，停止继续产生 token 消耗）
+  if (sessionStore.currentSessionId) {
+    try { await stopSession(sessionStore.currentSessionId) } catch { /* 停止失败不阻塞界面 */ }
   }
   sessionStore.stopStreaming()
 }

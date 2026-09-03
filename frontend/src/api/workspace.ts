@@ -56,8 +56,8 @@ export async function removeMember(userId: number): Promise<ApiResponse<null>> {
   return res.data
 }
 
-export async function getActivities(): Promise<ApiResponse<PaginatedData<ActivityLog>>> {
+export async function getActivities(page = 1, pageSize = 20): Promise<ApiResponse<PaginatedData<ActivityLog>>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: { list: mockActivities, total: mockActivities.length, page: 1, pageSize: 20 } }
-  const res = await http.get<ApiResponse<PaginatedData<ActivityLog>>>(`/workspaces/${localStorage.getItem('workspaceId')}/activities`)
+  const res = await http.get<ApiResponse<PaginatedData<ActivityLog>>>(`/workspaces/${localStorage.getItem('workspaceId')}/activities`, { params: { page, pageSize } })
   return res.data
 }

@@ -35,12 +35,6 @@ export async function stopSession(sessionId: number): Promise<ApiResponse<null>>
   return res.data
 }
 
-export async function continueSession(sessionId: number, data: { additionalInput?: string; mode: string }): Promise<ApiResponse<null>> {
-  if (USE_MOCK) return { code: 0, message: 'ok', data: null }
-  const res = await http.post<ApiResponse<null>>(`/sessions/${sessionId}/continue`, data)
-  return res.data
-}
-
 export async function deleteSession(sessionId: number): Promise<ApiResponse<null>> {
   if (USE_MOCK) return { code: 0, message: 'ok', data: null }
   const res = await http.delete<ApiResponse<null>>(`/sessions/${sessionId}`)

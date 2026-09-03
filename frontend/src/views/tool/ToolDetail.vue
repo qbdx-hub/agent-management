@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getToolDetail } from '@/api/tool'
-import { mockToolTestSuccess, mockToolStats } from '@/mock/tools'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getToolDetail, testTool, getToolStats, deleteTool } from '@/api/tool'
 import { formatPercent, formatLatency, formatDateTime } from '@/utils/format'
 import type { ToolDetail as ToolDetailType, ToolTestResult, ToolStats } from '@/types/tool'
 import ToolIcon from '@/components/ToolIcon.vue'
@@ -35,17 +34,60 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  // 统计接口后端暂未实现，先用占位数据，避免 404 报错
-  stats.value = { ...mockToolStats }
+  // 加载真实调用统计（tool_call_record 聚合）
+  try {
+    const res = await getToolStats(id)
+    if (res.code === 0 && res.data) {
+      stats.value = res.data
+    }
+  } catch { /* 统计加载失败不阻塞详情展示 */ }
 })
 
-async function runTest() {
-  // 测试接口后端暂未实现，先用占位结果
+/** 删除工具（后端要求所有 Agent 已解绑此工具才可删除） */
+async function handleDelete() {
+  if (!tool.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定删除工具「${tool.value.displayName}」吗？已绑定该工具的 Agent 需先解绑。`,
+      '删除工具',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch { return }
+  try {
+    const res = await deleteTool(tool.value.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      router.push('/tools')
+    }
+  } catch {
+    // 错误已由 axios 响应拦截器统一提示（如仍有 Agent 绑定）
+  }
+}
+
+async function runTest() { if (!tool.value) return
   testing.value = true
-  setTimeout(() => {
-    testResult.value = { ...mockToolTestSuccess }
+  try {
+    const res = await testTool(tool.value.id, testParams.value)
+    if (res.code === 0 && res.data) {
+      testResult.value = res.data
+      if (res.data.success) {
+        ElMessage.success('测试成功')
+      } else {
+        ElMessage.warning('测试失败：' + (res.data.responseStatus ? 'HTTP ' + res.data.responseStatus : '请求异常'))
+      }
+      // 测试后刷新统计与调用记录
+      const statsRes = await getToolStats(tool.value.id)
+      if (statsRes.code === 0 && statsRes.data) stats.value = statsRes.data
+      const detailRes = await getToolDetail(tool.value.id)
+      if (detailRes.code === 0 && detailRes.data) tool.value = detailRes.data
+    } else {
+      ElMessage.error(res.message || '测试请求失败')
+    }
+  } catch {
+    ElMessage.error('测试请求失败')
+  } finally {
     testing.value = false
-  }, 1500)
+  }
 }
 </script>
 
@@ -60,7 +102,11 @@ async function runTest() {
           <div class="text-muted">{{ tool.name }} · {{ tool.categoryLabel }} · {{ tool.type ? tool.type.toUpperCase() : '' }}</div>
         </div>
       </div>
-      <el-button @click="router.push('/tools')">返回列表</el-button>
+      <div style="display:flex;gap:8px">
+        <el-button @click="router.push(`/tools/register?edit=${tool.id}`)">编辑</el-button>
+        <el-button type="danger" plain @click="handleDelete">删除</el-button>
+        <el-button @click="router.push('/tools')">返回列表</el-button>
+      </div>
     </div>
 
     <el-card>
