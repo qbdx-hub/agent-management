@@ -208,13 +208,16 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
     // ==================== 私有辅助 ====================
 
     /**
-     * 取指定 id 的 Agent，并校验其属于当前工作空间；
+     * 取指定 id 的 Agent，并校验其属于当前工作空间且为当前账户所创建
+     * （与列表页按 createdBy 账户隔离的口径一致）；
      * 不存在或越权一律抛 AGENT_NOT_FOUND（不暴露存在性）。
      */
     private Agent requireAgentInWorkspace(Long id) {
         Agent agent = agentMapper.selectById(id);
         Long workspaceId = SecurityUtils.currentWorkspaceId();
-        if (agent == null || !workspaceId.equals(agent.getWorkspaceId())) {
+        Long currentUserId = SecurityUtils.currentUserId();
+        if (agent == null || !workspaceId.equals(agent.getWorkspaceId())
+                || !currentUserId.equals(agent.getCreatedBy())) {
             throw new BusinessException(ResultCode.AGENT_NOT_FOUND);
         }
         return agent;
