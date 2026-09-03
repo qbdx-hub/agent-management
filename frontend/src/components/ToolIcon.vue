@@ -1,19 +1,31 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { resolveLegacyIcon, hueFor } from './icons'
 
 const props = withDefaults(defineProps<{ icon?: string; size?: number }>(), { size: 28 })
 
-// 图标值若为 PNG stem（数字开头，如 '09-search'）渲染为图片；否则当 emoji 文本，兼容旧数据
-const isImg = computed(() => !!props.icon && /^\d+-/.test(props.icon as string))
-const src = computed(() => `/icons/${props.icon}.png`)
+// 存量值（PNG stem / emoji）与新版图标名统一解析为 Tabler 图标
+const iconName = computed(() => resolveLegacyIcon(props.icon))
+const hue = computed(() => hueFor(props.icon))
+const iconSize = computed(() => Math.round(props.size * 0.54))
 </script>
 
 <template>
-  <img v-if="isImg" :src="src" class="tool-icon-img" :style="{ width: size + 'px', height: size + 'px' }" alt="" />
-  <span v-else class="tool-icon-emoji" :style="{ fontSize: size + 'px', lineHeight: 1 }">{{ icon }}</span>
+  <span
+    class="tool-icon-wrap"
+    :style="{ width: size + 'px', height: size + 'px', background: hue.bg, color: hue.fg }"
+  >
+    <UiIcon :name="iconName" :size="iconSize" />
+  </span>
 </template>
 
 <style scoped>
-.tool-icon-img { object-fit: contain; display: inline-block; vertical-align: middle; }
-.tool-icon-emoji { display: inline-block; vertical-align: middle; }
+.tool-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
 </style>

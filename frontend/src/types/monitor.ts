@@ -4,13 +4,13 @@ export interface MonitorOverview {
   activeAgentCount: number
   runningTaskCount: number
   todayCallCount: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   p99LatencyMs: number
   totalTokensToday: number
   trends: {
     callCountChange: number
-    successRateChange: number
+    successRateChange: number | null
     latencyChange: number
   }
 }
@@ -31,7 +31,7 @@ export interface AgentHealthItem {
   agentId: number
   agentName: string
   status: 'healthy' | 'warning' | 'critical'
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   callCount24h: number
   errorSummary: string

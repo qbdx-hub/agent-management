@@ -20,9 +20,9 @@ const records = ref<CostRecord[]>([])
 const loading = ref(false)
 
 function barColor(percent: number) {
-  if (percent > 90) return '#f56c6c'
-  if (percent > 70) return '#e6a23c'
-  return '#67c23a'
+  if (percent > 90) return '#cf3f4f'
+  if (percent > 70) return '#b3730f'
+  return '#178a5b'
 }
 
 // 计算趋势柱状图高度
@@ -83,10 +83,10 @@ onMounted(loadData)
 
     <!-- 概览卡片 -->
     <div class="stats-row" v-loading="loading">
-      <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.totalCost) }}</div><div class="cost-lbl">本月总花费</div></el-card>
-      <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.budgetRemaining) }}</div><div class="cost-lbl">预算剩余</div></el-card>
-      <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.todayCost) }}</div><div class="cost-lbl">今日花费</div></el-card>
-      <el-card shadow="hover" class="cost-card"><div class="cost-val">{{ formatCost(overview.projectedMonthCost) }}</div><div class="cost-lbl">预计月底</div></el-card>
+      <el-card class="cost-card"><div class="cost-val">{{ formatCost(overview.totalCost) }}</div><div class="cost-lbl">本月总花费</div></el-card>
+      <el-card class="cost-card"><div class="cost-val">{{ formatCost(overview.budgetRemaining) }}</div><div class="cost-lbl">预算剩余</div></el-card>
+      <el-card class="cost-card"><div class="cost-val">{{ formatCost(overview.todayCost) }}</div><div class="cost-lbl">今日花费</div></el-card>
+      <el-card class="cost-card"><div class="cost-val">{{ formatCost(overview.projectedMonthCost) }}</div><div class="cost-lbl">预计月底</div></el-card>
     </div>
 
     <!-- 预算进度 -->
@@ -110,7 +110,7 @@ onMounted(loadData)
           <div v-for="item in byModel" :key="item.label" class="breakdown-item">
             <div class="breakdown-header"><span>{{ item.label }}</span><span>{{ formatCost(item.cost) }}</span></div>
             <el-progress :percentage="Number(item.percent)" :show-text="false" :stroke-width="8" />
-            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent) / 100) }} · {{ formatTokens(item.tokenInput + item.tokenOutput) }} tokens</div>
+            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent)) }} · {{ formatTokens(item.tokenInput + item.tokenOutput) }} tokens</div>
           </div>
         </el-card>
       </el-col>
@@ -122,8 +122,8 @@ onMounted(loadData)
           <el-empty v-if="byAgent.length === 0" description="暂无数据" :image-size="48" />
           <div v-for="item in byAgent" :key="item.label" class="breakdown-item">
             <div class="breakdown-header"><span>{{ item.label }}</span><span>{{ formatCost(item.cost) }}</span></div>
-            <el-progress :percentage="Number(item.percent)" :show-text="false" :stroke-width="8" color="#409eff" />
-            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent) / 100) }}</div>
+            <el-progress :percentage="Number(item.percent)" :show-text="false" :stroke-width="8" color="#5a54e8" />
+            <div class="text-muted" style="font-size:12px">{{ formatPercent(Number(item.percent)) }}</div>
           </div>
         </el-card>
       </el-col>
@@ -131,7 +131,7 @@ onMounted(loadData)
       <!-- 趋势 -->
       <el-col :span="8">
         <el-card class="mb-24">
-          <template #header><span>30天趋势</span></template>
+          <template #header><span>近 14 天趋势</span></template>
           <el-empty v-if="trend.length === 0" description="暂无数据" :image-size="48" />
           <div v-else class="trend-chart">
             <div v-for="(point, idx) in trend.slice(-14)" :key="idx" class="trend-bar-col">
@@ -165,10 +165,10 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-.cost-page { max-width: 1400px; }
+.cost-page { max-width: 1200px; margin: 0 auto; }
 .cost-card { text-align: center; }
 .cost-val { font-size: 28px; font-weight: 700; color: var(--el-color-primary); }
-.cost-lbl { color: #909399; font-size: 13px; margin-top: 4px; }
+.cost-lbl { color: var(--text-3); font-size: 13px; margin-top: 4px; }
 .breakdown-item { padding: 10px 0; border-bottom: 1px solid var(--el-border-color-lighter); }
 .breakdown-item:last-child { border-bottom: none; }
 .breakdown-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
@@ -190,5 +190,5 @@ onMounted(loadData)
   transform: scaleY(1.05);
   transform-origin: bottom;
 }
-.trend-label { font-size: 10px; color: #909399; }
+.trend-label { font-size: 10px; color: var(--text-3); }
 </style>

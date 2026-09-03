@@ -18,7 +18,7 @@ export interface ToolSummary {
   status: 'active' | 'inactive'
   bindAgentCount: number
   totalCalls: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   createdAt: string
 }
@@ -59,7 +59,7 @@ export interface ToolDetail {
   maxRetries: number
   bindAgentCount: number
   totalCalls: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   recentCalls: ToolCallRecord[]
   createdAt: string
@@ -116,7 +116,7 @@ export interface MCPConfig {
 
 export interface ToolStats {
   totalCalls: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   p99LatencyMs: number
   dailyCallCount: { date: string; count: number; failCount: number }[]

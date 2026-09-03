@@ -39,10 +39,10 @@ const nodeStatusMeta: Record<string, { label: string; type: 'primary' | 'success
 }
 
 function nodeColor(status: string) {
-  return status === 'success' ? '#67c23a'
-    : status === 'error' ? '#f56c6c'
-    : status === 'waiting' ? '#e6a23c'
-    : '#c0c4cc'
+  return status === 'success' ? '#178a5b'
+    : status === 'error' ? '#cf3f4f'
+    : status === 'waiting' ? '#b3730f'
+    : '#9295a0'
 }
 
 async function fetchRun() {
@@ -111,11 +111,11 @@ onBeforeUnmount(stopPolling)
   <div class="workflow-run-page" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <el-button text @click="router.push('/orchestration')"><el-icon><ArrowLeft /></el-icon></el-button>
+        <el-button text @click="router.push('/orchestration')"><UiIcon name="arrow-left" /></el-button>
         <h2>运行记录 #{{ runId }}</h2>
       </div>
       <div v-if="run" style="display:flex;align-items:center;gap:10px">
-        <el-tag v-if="run.status" :type="statusMeta[run.status]?.type" effect="dark" size="small">
+        <el-tag v-if="run.status" :type="statusMeta[run.status]?.type" size="small" round>
           {{ statusMeta[run.status]?.label || run.status }}
         </el-tag>
         <el-button v-if="run.status === 'waiting_approval'" type="success" size="small" :loading="approving" @click="handleApprove(true)">通过</el-button>
@@ -124,13 +124,13 @@ onBeforeUnmount(stopPolling)
     </div>
 
     <template v-if="run">
-      <el-card style="margin-bottom:16px">
+      <el-card shadow="never" style="margin-bottom:16px">
         <el-descriptions :column="4" size="small">
-          <el-descriptions-item label="触发者">{{ run.triggeredByName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ run.startedAt ? formatDateTime(run.startedAt) : '-' }}</el-descriptions-item>
-          <el-descriptions-item label="耗时">{{ run.duration != null ? formatLatency(run.duration) : '进行中' }}</el-descriptions-item>
+          <el-descriptions-item label="触发者">{{ run.triggeredByName || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ run.startedAt ? formatDateTime(run.startedAt) : '—' }}</el-descriptions-item>
+          <el-descriptions-item label="耗时"><span class="num">{{ run.duration != null ? formatLatency(run.duration) : '进行中' }}</span></el-descriptions-item>
           <el-descriptions-item label="Token / 费用">
-            {{ formatTokens(run.totalTokens || 0) }} / {{ formatCost(run.totalCost || 0) }}
+            <span class="num">{{ formatTokens(run.totalTokens || 0) }} / {{ formatCost(run.totalCost || 0) }}</span>
           </el-descriptions-item>
         </el-descriptions>
         <el-descriptions v-if="run.input && Object.keys(run.input).length" :column="1" size="small" style="margin-top:8px">
@@ -141,7 +141,7 @@ onBeforeUnmount(stopPolling)
         <el-alert v-if="run.error" :title="run.error" type="error" :closable="false" style="margin-top:8px" />
       </el-card>
 
-      <el-card>
+      <el-card shadow="never">
         <template #header><span>节点执行明细</span></template>
         <el-empty v-if="!run.nodeResults?.length" description="等待节点开始执行..." />
         <el-timeline v-else>
@@ -150,24 +150,25 @@ onBeforeUnmount(stopPolling)
             :key="node.nodeId + '-' + node.sequence"
             :color="nodeColor(node.status)"
           >
-            <el-card shadow="never">
+            <!-- 边框面板替代嵌套卡片 -->
+            <div class="node-panel">
               <div class="node-head">
                 <strong>{{ node.label || node.nodeId }}</strong>
-                <el-tag size="small" type="info">{{ NODE_TYPE_LABEL[node.type || ''] || node.type }}</el-tag>
-                <el-tag size="small" :type="nodeStatusMeta[node.status]?.type">
+                <el-tag size="small" type="info" round>{{ NODE_TYPE_LABEL[node.type || ''] || node.type }}</el-tag>
+                <el-tag size="small" round :type="nodeStatusMeta[node.status]?.type">
                   {{ nodeStatusMeta[node.status]?.label || node.status }}
                 </el-tag>
-                <span v-if="node.durationMs" class="text-muted" style="font-size:12px">{{ formatLatency(node.durationMs) }}</span>
-                <span v-if="node.tokens" class="text-muted" style="font-size:12px">{{ formatTokens(node.tokens) }}</span>
+                <span v-if="node.durationMs" class="node-meta num">{{ formatLatency(node.durationMs) }}</span>
+                <span v-if="node.tokens" class="node-meta num">{{ formatTokens(node.tokens) }}</span>
               </div>
               <div v-if="node.error" class="node-error">{{ node.error }}</div>
               <pre v-else-if="node.output" class="node-output">{{ node.output }}</pre>
-            </el-card>
+            </div>
           </el-timeline-item>
         </el-timeline>
       </el-card>
 
-      <el-card v-if="run.status === 'completed' && run.output?.result" style="margin-top:16px">
+      <el-card v-if="run.status === 'completed' && run.output?.result" shadow="never" style="margin-top:16px">
         <template #header><span>最终输出</span></template>
         <pre class="node-output">{{ run.output.result }}</pre>
       </el-card>
@@ -177,13 +178,24 @@ onBeforeUnmount(stopPolling)
 </template>
 
 <style scoped>
-.workflow-run-page { max-width: 900px; }
-.node-head { display: flex; align-items: center; gap: 8px; }
+.workflow-run-page { max-width: 900px; margin: 0 auto; }
+/* 节点面板：时间线内的边框面板（替代嵌套卡片） */
+.node-panel {
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-control);
+  background: var(--bg-surface);
+  padding: 14px 16px;
+}
+.node-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.node-head strong { font-size: 13.5px; color: var(--text-1); }
+.node-meta { font-size: 12px; color: var(--text-3); }
 .node-output {
   margin: 8px 0 0;
   padding: 8px 12px;
-  background: var(--el-fill-color-light);
-  border-radius: 4px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-1);
+  border-radius: 8px;
+  font-family: var(--font-num);
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -193,12 +205,12 @@ onBeforeUnmount(stopPolling)
 .node-error {
   margin-top: 8px;
   padding: 8px 12px;
-  background: var(--el-color-danger-light-9);
-  color: var(--el-color-danger);
-  border-radius: 4px;
+  background: var(--st-danger-bg);
+  color: var(--st-danger);
+  border-radius: 8px;
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-word;
 }
-.mono { font-size: 12px; word-break: break-all; }
+.mono { font-size: 12px; word-break: break-all; font-family: var(--font-num); }
 </style>

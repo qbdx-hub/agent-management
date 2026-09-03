@@ -83,7 +83,7 @@ onMounted(fetchList)
 <template>
   <div class="approval-list-page">
     <div class="page-header"><h2>审批列表</h2></div>
-    <el-card v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="table-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="待审批" name="pending" />
         <el-tab-pane label="已通过" name="approved" />
@@ -93,21 +93,21 @@ onMounted(fetchList)
       <div v-for="item in approvals" :key="item.approvalId" class="approval-item">
         <div class="approval-info">
           <div class="approval-title">
-            <el-tag v-if="actionLabel[item.action]" size="small" type="info" style="margin-right:6px">{{ actionLabel[item.action] }}</el-tag>
+            <el-tag v-if="actionLabel[item.action]" size="small" type="info" round style="margin-right:6px">{{ actionLabel[item.action] }}</el-tag>
             {{ item.detail || item.resourceName || `审批 #${item.approvalId}` }}
             <el-button v-if="isWorkflowRun(item)" text type="primary" size="small" @click="goRun(item)">查看运行</el-button>
           </div>
-          <div class="text-muted" style="font-size:12px">
-            {{ item.ruleName ? item.ruleName + ' · ' : '' }}{{ item.applicantName || '-' }} 申请 · {{ formatDateTime(item.createdAt) }}
-            <template v-if="item.resolvedAt"> · {{ item.approverName || '-' }} 处理于 {{ formatDateTime(item.resolvedAt) }}</template>
+          <div class="approval-meta">
+            {{ item.ruleName ? item.ruleName + ' · ' : '' }}{{ item.applicantName || '—' }} 申请 · {{ formatDateTime(item.createdAt) }}
+            <template v-if="item.resolvedAt"> · {{ item.approverName || '—' }} 处理于 {{ formatDateTime(item.resolvedAt) }}</template>
           </div>
-          <div v-if="item.reason" class="text-muted" style="font-size:12px;margin-top:4px">意见：{{ item.reason }}</div>
+          <div v-if="item.reason" class="approval-meta" style="margin-top:4px">意见：{{ item.reason }}</div>
         </div>
         <div v-if="item.status === 'pending'" class="approval-actions">
           <el-button type="success" size="small" @click="handleApprove(item)">通过</el-button>
           <el-button type="danger" size="small" @click="handleReject(item)">拒绝</el-button>
         </div>
-        <el-tag v-else :type="item.status === 'approved' ? 'success' : 'danger'" size="small">
+        <el-tag v-else :type="item.status === 'approved' ? 'success' : 'danger'" size="small" round>
           {{ APPROVAL_STATUS_MAP[item.status] }}
         </el-tag>
       </div>
@@ -126,10 +126,17 @@ onMounted(fetchList)
 </template>
 
 <style scoped>
-.approval-list-page { max-width: 1200px; }
-.approval-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--el-border-color-lighter); }
+.approval-list-page { max-width: 1200px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
+.approval-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border-1); }
 .approval-item:last-child { border-bottom: none; }
 .approval-info { flex: 1; }
-.approval-title { font-size: 14px; margin-bottom: 4px; }
+.approval-title { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
+.approval-meta { font-size: 12px; color: var(--text-3); }
 .approval-actions { display: flex; gap: 8px; }
 </style>

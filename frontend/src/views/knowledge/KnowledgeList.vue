@@ -66,21 +66,21 @@ async function handleDelete(kb: KnowledgeBase, event: Event) {
   <div class="knowledge-list-page" v-loading="loading">
     <div class="page-header">
       <h2>知识库</h2>
-      <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon> 创建知识库</el-button>
+      <el-button type="primary" @click="handleCreate"><UiIcon name="plus" /> 创建知识库</el-button>
     </div>
     <div class="card-grid">
       <el-card
         v-for="kb in knowledgeBases"
         :key="kb.id"
-        shadow="hover"
+        shadow="never"
         class="kb-card"
         @click="goToDetail(kb.id)"
       >
         <div class="kb-header">
-          <img src="/icons/04-notebook.png" class="kb-icon" alt="" />
-          <div style="flex:1">
+          <span class="kb-icon"><UiIcon name="notebook" :size="20" /></span>
+          <div style="flex:1;min-width:0">
             <div class="kb-name">{{ kb.name }}</div>
-            <div class="text-muted" style="font-size:12px">{{ kb.description || '暂无描述' }}</div>
+            <div class="kb-desc">{{ kb.description || '暂无描述' }}</div>
           </div>
           <el-button
             type="danger"
@@ -88,17 +88,17 @@ async function handleDelete(kb: KnowledgeBase, event: Event) {
             size="small"
             @click="handleDelete(kb, $event)"
           >
-            <el-icon><Delete /></el-icon>
+            <UiIcon name="trash" />
           </el-button>
         </div>
         <div class="kb-meta">
-          <span><el-icon class="ii"><Document /></el-icon>{{ kb.documentCount }} 文档</span>
-          <span><el-icon class="ii"><Coin /></el-icon>{{ kb.totalTokens }} Token</span>
-          <el-tag :type="kb.status === 'active' ? 'success' : kb.status === 'building' ? 'warning' : 'danger'" size="small">
+          <span><UiIcon name="file-text" class="ii" /><span class="num">{{ kb.documentCount }}</span> 文档</span>
+          <span><UiIcon name="coins" class="ii" /><span class="num">{{ kb.totalTokens }}</span> Token</span>
+          <el-tag :type="kb.status === 'active' ? 'success' : kb.status === 'building' ? 'warning' : 'danger'" size="small" round>
             {{ kb.status === 'active' ? '正常' : kb.status === 'building' ? '构建中' : '异常' }}
           </el-tag>
         </div>
-        <div class="text-muted" style="font-size:12px;margin-top:8px">更新于 {{ formatDateTime(kb.updatedAt) }}</div>
+        <div class="kb-updated">更新于 {{ formatDateTime(kb.updatedAt) }}</div>
       </el-card>
     </div>
     <el-empty v-if="!loading && knowledgeBases.length === 0" description="暂无知识库，点击上方按钮创建" />
@@ -106,11 +106,40 @@ async function handleDelete(kb: KnowledgeBase, event: Event) {
 </template>
 
 <style scoped>
-.knowledge-list-page { max-width: 1200px; }
-.kb-card { cursor: pointer; transition: all 0.2s; }
-.kb-card:hover { transform: translateY(-2px); }
+.knowledge-list-page { max-width: 1200px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.kb-card {
+  cursor: pointer;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.kb-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
 .kb-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.kb-icon { width: 30px; height: 30px; object-fit: contain; }
-.kb-name { font-weight: 600; font-size: 15px; }
-.kb-meta { display: flex; gap: 16px; font-size: 12px; color: #909399; align-items: center; }
+.kb-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--accent-soft); color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kb-name { font-weight: 700; font-size: 14.5px; color: var(--text-1); }
+.kb-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kb-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-2); align-items: center; }
+.kb-updated { font-size: 12px; color: var(--text-3); margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .kb-card { transition: none; }
+  .kb-card:hover { transform: none; }
+}
 </style>

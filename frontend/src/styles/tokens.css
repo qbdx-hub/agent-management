@@ -1,0 +1,164 @@
+/* ============================================================
+   设计令牌 · 明亮产品风（V4 预览稿定稿）
+   基线：docs/design-previews/workbench-v4-bright.html
+   原则：全站唯一强调色 + 一族冷灰 + 一套圆角/阴影系统；
+        下半区把 Element Plus 的主题变量整体改绑到这套令牌上，
+        EP 组件（按钮/输入框/表格/菜单/标签…）自动跟随，不再出现 #409EFF。
+   ============================================================ */
+:root {
+  /* ---- 表面 ---- */
+  --bg-page: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-hover: #f6f7f9;
+  --bg-muted: #f9fafb;
+
+  /* ---- 边框与文字（一族冷灰） ---- */
+  --border-1: #e8e9ee;
+  --text-1: #16161d;
+  --text-2: #5d6068;
+  --text-3: #9295a0;
+
+  /* ---- 强调色（全站唯一） ---- */
+  --accent: #5a54e8;
+  --accent-hover: #4943d1;
+  --accent-soft: #efedfd;
+
+  /* ---- 状态语义色（只用于真实状态） ---- */
+  --st-running: #178a5b;
+  --st-running-bg: #e4f5ec;
+  --st-warning: #b3730f;
+  --st-warning-bg: #fbf1de;
+  --st-danger: #cf3f4f;
+  --st-danger-bg: #faebee;
+  --st-idle: #6e727c;
+  --st-idle-bg: #f0f1f4;
+
+  /* ---- 形状锁：全站唯一圆角系统 ---- */
+  --r-card: 16px;
+  --r-control: 10px;
+  --r-pill: 999px;
+
+  /* ---- 阴影：色相跟随背景，不用纯黑投影 ---- */
+  --shadow-card: 0 1px 3px rgba(22, 22, 29, 0.05);
+  --shadow-lift: 0 12px 32px rgba(22, 22, 29, 0.1);
+
+  /* ---- 字体：中文优先系统栈 + 等宽数字 ---- */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-num: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  /* ============================================================
+     Element Plus 主题改绑
+     ============================================================ */
+
+  /* 主色（accent #5a54e8 的完整明度阶） */
+  --el-color-primary: #5a54e8;
+  --el-color-primary-light-3: #7d78ed;
+  --el-color-primary-light-5: #a29ff3;
+  --el-color-primary-light-7: #c8c6f8;
+  --el-color-primary-light-8: #dcdafc;
+  --el-color-primary-light-9: #efedfd;
+  --el-color-primary-dark-2: #4943d1;
+
+  /* 成功/运行中 */
+  --el-color-success: #178a5b;
+  --el-color-success-light-3: #4ba17d;
+  --el-color-success-light-5: #8bc4ad;
+  --el-color-success-light-7: #c5e6d7;
+  --el-color-success-light-8: #ddf0e7;
+  --el-color-success-light-9: #e4f5ec;
+  --el-color-success-dark-2: #136e49;
+
+  /* 警告/调试中 */
+  --el-color-warning: #b3730f;
+  --el-color-warning-light-3: #c68f3f;
+  --el-color-warning-light-5: #d9b87c;
+  --el-color-warning-light-7: #ecd6b8;
+  --el-color-warning-light-8: #f3e4ce;
+  --el-color-warning-light-9: #fbf1de;
+  --el-color-warning-dark-2: #8f5c0c;
+
+  /* 危险/错误 */
+  --el-color-danger: #cf3f4f;
+  --el-color-danger-light-3: #d96b77;
+  --el-color-danger-light-5: #e59ba3;
+  --el-color-danger-light-7: #f2c6cb;
+  --el-color-danger-light-8: #f7dae0;
+  --el-color-danger-light-9: #faebee;
+  --el-color-danger-dark-2: #a63340;
+  --el-color-error: #cf3f4f;
+  --el-color-error-light-3: #d96b77;
+  --el-color-error-light-5: #e59ba3;
+  --el-color-error-light-7: #f2c6cb;
+  --el-color-error-light-8: #f7dae0;
+  --el-color-error-light-9: #faebee;
+  --el-color-error-dark-2: #a63340;
+
+  /* 信息/中性 */
+  --el-color-info: #6e727c;
+  --el-color-info-light-3: #8b8e96;
+  --el-color-info-light-5: #a9abb1;
+  --el-color-info-light-7: #c8c9cd;
+  --el-color-info-light-8: #d9dadd;
+  --el-color-info-light-9: #f0f1f4;
+  --el-color-info-dark-2: #585b63;
+
+  /* 文字 */
+  --el-text-color-primary: #16161d;
+  --el-text-color-regular: #5d6068;
+  --el-text-color-secondary: #9295a0;
+  --el-text-color-placeholder: #a8abb5;
+  --el-text-color-disabled: #c0c3cb;
+
+  /* 边框 */
+  --el-border-color: #e8e9ee;
+  --el-border-color-light: #ececf1;
+  --el-border-color-lighter: #f0f1f4;
+  --el-border-color-extra-light: #f5f6f8;
+  --el-border-color-dark: #dcdde4;
+  --el-border-color-hover: #c9cbd4;
+
+  /* 填充 */
+  --el-fill-color: #f0f1f4;
+  --el-fill-color-light: #f6f7f9;
+  --el-fill-color-lighter: #f9fafb;
+  --el-fill-color-extra-light: #fafbfd;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-dark: #ebedf0;
+
+  /* 背景：页面与卡片同底色，靠边框+阴影分层（V4 全白方案） */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+
+  /* 形状：控件 10 / 小件 8 / 卡片 16 / 药丸 999 */
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
+  --el-border-radius-round: 999px;
+  --el-border-radius-circle: 50%;
+  --el-card-border-radius: 16px;
+  --el-dialog-border-radius: 16px;
+  --el-tag-border-radius: 999px;
+
+  /* 阴影：卡片一律用扁平轻阴影（el-card always/hover 档都绑到 shadow-card），浮层保留抬升阴影 */
+  --el-box-shadow: 0 12px 32px rgba(22, 22, 29, 0.1), 0 2px 8px rgba(22, 22, 29, 0.06);
+  --el-box-shadow-light: 0 1px 3px rgba(22, 22, 29, 0.05);
+  --el-box-shadow-lighter: 0 1px 3px rgba(22, 22, 29, 0.05);
+  --el-box-shadow-dark: 0 16px 48px rgba(22, 22, 29, 0.16);
+
+  /* 字体 */
+  --el-font-family: var(--font-ui);
+
+  /* 菜单（侧边栏） */
+  --el-menu-active-color: #5a54e8;
+  --el-menu-text-color: #5d6068;
+  --el-menu-hover-text-color: #16161d;
+  --el-menu-hover-bg-color: #f6f7f9;
+
+  /* 表格 */
+  --el-table-border-color: #ececf1;
+  --el-table-header-bg-color: #f9fafb;
+  --el-table-header-text-color: #5d6068;
+  --el-table-row-hover-bg-color: #f6f7f9;
+  --el-table-text-color: #16161d;
+}

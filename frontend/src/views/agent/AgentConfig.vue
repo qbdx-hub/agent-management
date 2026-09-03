@@ -99,6 +99,16 @@ async function handleSave() {
 <template>
   <div class="agent-config" v-if="agent">
     <el-form label-width="120px" style="max-width:700px">
+      <el-divider content-position="left">基础信息</el-divider>
+      <el-form-item label="名称"><el-input v-model="form.name" maxlength="50" /></el-form-item>
+      <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" maxlength="200" /></el-form-item>
+      <el-form-item label="头像"><el-input v-model="form.avatar" style="width:80px" /></el-form-item>
+      <el-form-item label="标签">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <el-tag v-for="tag in form.tags" :key="tag" closable round @close="form.tags = form.tags.filter(t => t !== tag)">{{ tag }}</el-tag>
+        </div>
+      </el-form-item>
+
       <el-divider content-position="left">AI 模型连接</el-divider>
       <el-form-item label="Base URL">
         <el-input v-model="form.aiBaseUrl" placeholder="https://api.openai.com/v1" />
@@ -110,30 +120,6 @@ async function handleSave() {
       </el-form-item>
       <el-form-item label="模型名称">
         <el-input v-model="form.aiModel" placeholder="gpt-4o / deepseek-v4-flash / ..." />
-      </el-form-item>
-
-      <el-divider content-position="left">Token 价格（美元 / 百万 token）</el-divider>
-      <el-form-item label="输入价格">
-        <el-input-number v-model="form.inputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
-        <div class="form-tip">普通输入 token 单价（prompt tokens）</div>
-      </el-form-item>
-      <el-form-item label="缓存命中价格">
-        <el-input-number v-model="form.cachedInputPricePerMillion" :min="0" :max="1000" :step="0.001" :precision="4" />
-        <div class="form-tip">命中上下文缓存的输入 token 单价（通常为输入价的 10%~50%）</div>
-      </el-form-item>
-      <el-form-item label="输出价格">
-        <el-input-number v-model="form.outputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
-        <div class="form-tip">输出 token 单价（completion tokens）</div>
-      </el-form-item>
-
-      <el-divider content-position="left">基础信息</el-divider>
-      <el-form-item label="名称"><el-input v-model="form.name" maxlength="50" /></el-form-item>
-      <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" maxlength="200" /></el-form-item>
-      <el-form-item label="头像"><el-input v-model="form.avatar" style="width:80px" /></el-form-item>
-      <el-form-item label="标签">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <el-tag v-for="tag in form.tags" :key="tag" closable @close="form.tags = form.tags.filter(t => t !== tag)">{{ tag }}</el-tag>
-        </div>
       </el-form-item>
 
       <el-divider content-position="left">模型参数</el-divider>
@@ -151,6 +137,20 @@ async function handleSave() {
       <el-form-item label="Max Tokens"><el-input-number v-model="form.maxTokens" :min="256" :max="128000" :step="256" /></el-form-item>
       <el-form-item label="Top P"><el-slider v-model="form.topP" :min="0" :max="1" :step="0.05" show-input style="width:400px" /></el-form-item>
 
+      <el-divider content-position="left">Token 价格（美元 / 百万 token）</el-divider>
+      <el-form-item label="输入价格">
+        <el-input-number v-model="form.inputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
+        <div class="form-tip">普通输入 token 单价（prompt tokens）</div>
+      </el-form-item>
+      <el-form-item label="缓存命中价格">
+        <el-input-number v-model="form.cachedInputPricePerMillion" :min="0" :max="1000" :step="0.001" :precision="4" />
+        <div class="form-tip">命中上下文缓存的输入 token 单价（通常为输入价的 10%~50%）</div>
+      </el-form-item>
+      <el-form-item label="输出价格">
+        <el-input-number v-model="form.outputPricePerMillion" :min="0" :max="1000" :step="0.01" :precision="4" />
+        <div class="form-tip">输出 token 单价（completion tokens）</div>
+      </el-form-item>
+
       <el-form-item>
         <el-button type="primary" :loading="loading" @click="handleSave">保存配置</el-button>
       </el-form-item>
@@ -159,6 +159,6 @@ async function handleSave() {
 </template>
 
 <style scoped>
-.agent-config { padding: 20px 0; }
-.form-tip { font-size: 12px; color: #909399; margin-top: 4px; }
+.agent-config { padding: 16px 0 0; }
+.form-tip { font-size: 12px; color: var(--text-3); margin-top: 4px; }
 </style>

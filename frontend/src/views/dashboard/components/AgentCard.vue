@@ -8,60 +8,107 @@ defineEmits<{ click: [] }>()
 </script>
 
 <template>
-  <el-card shadow="hover" class="agent-card" @click="$emit('click')">
-    <div class="agent-card-header">
-      <AgentAvatar :avatar="agent.avatar" :size="44" />
+  <el-card shadow="never" class="agent-card" @click="$emit('click')">
+    <div class="agent-top">
+      <AgentAvatar :avatar="agent.avatar" :size="42" />
       <div class="agent-info">
         <div class="agent-name">{{ agent.name }}</div>
-        <el-tag :type="(AGENT_STATUS_COLORS[agent.status] as any)" size="small">
-          {{ AGENT_STATUS_MAP[agent.status] }}
-        </el-tag>
+        <div class="agent-desc">{{ agent.description || '暂无描述' }}</div>
+      </div>
+      <el-tag :type="(AGENT_STATUS_COLORS[agent.status] as any)" size="small" round>
+        {{ AGENT_STATUS_MAP[agent.status] }}
+      </el-tag>
+    </div>
+    <div class="agent-stats">
+      <div class="stat">
+        <div class="k">工具</div>
+        <div class="v num">{{ agent.toolCount }}</div>
+      </div>
+      <div class="stat">
+        <div class="k">会话</div>
+        <div class="v num">{{ agent.totalSessions }}</div>
+      </div>
+      <div class="stat">
+        <div class="k">成功率</div>
+        <div class="v num" :class="{ muted: agent.successRate == null }">{{ formatPercent(agent.successRate) }}</div>
       </div>
     </div>
-    <div class="agent-desc">{{ agent.description }}</div>
-    <div class="agent-meta">
-      <span><el-icon class="ii"><Tools /></el-icon>{{ agent.toolCount }} 工具</span>
-      <span><el-icon class="ii"><TrendCharts /></el-icon>{{ formatPercent(agent.successRate) }} 成功率</span>
-      <span><el-icon class="ii"><ChatDotRound /></el-icon>{{ agent.totalSessions }} 会话</span>
-    </div>
+    <span class="card-action">进入会话 →</span>
   </el-card>
 </template>
 
 <style scoped>
 .agent-card {
   cursor: pointer;
-  transition: all 0.2s;
+  position: relative;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s ease-out;
 }
 .agent-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--border-1);
 }
-.agent-card-header {
+.agent-top {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
 }
-.agent-avatar {
-  font-size: 28px;
+.agent-info {
+  flex: 1;
+  min-width: 0;
 }
 .agent-name {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--text-1);
 }
 .agent-desc {
-  color: #909399;
-  font-size: 13px;
-  margin-bottom: 12px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin-top: 1px;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
-.agent-meta {
+.agent-stats {
   display: flex;
-  gap: 16px;
+  gap: 26px;
+  margin-top: 18px;
+}
+.stat .k {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-2);
+}
+.stat .v {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 1px;
+  color: var(--text-1);
+}
+.stat .v.muted {
+  color: var(--text-3);
+  font-weight: 500;
+}
+.card-action {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.agent-card:hover .card-action {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-card,
+  .card-action {
+    transition: none;
+  }
+  .agent-card:hover {
+    transform: none;
+  }
 }
 </style>

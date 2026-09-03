@@ -13,6 +13,7 @@ import '@vue-flow/minimap/dist/style.css'
 import { getWorkflow, saveWorkflow, runWorkflow } from '@/api/workflow'
 import { getToolList } from '@/api/tool'
 import { useAgentStore } from '@/stores/agent'
+import { I as Ic } from '@/components/icons'
 import type { WorkflowStatus } from '@/types/workflow'
 
 const route = useRoute()
@@ -63,7 +64,7 @@ onPaneClick(() => {
 })
 
 const NODE_ICONS: Record<string, string> = {
-  start: 'CaretRight', agent: 'Cpu', tool: 'Tools', condition: 'Share', approval: 'Avatar', end: 'VideoPause',
+  start: 'play', agent: 'cpu', tool: 'tool', condition: 'split', approval: 'user', end: 'pause',
 }
 const NODE_LABELS: Record<string, string> = {
   start: '开始', agent: 'Agent 节点', tool: '工具节点', condition: '条件判断', approval: '人工审批', end: '结束',
@@ -332,27 +333,27 @@ onMounted(() => {
   <div class="workflow-editor-page" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <el-button text @click="router.push('/orchestration')"><el-icon><ArrowLeft /></el-icon></el-button>
+        <el-button text @click="router.push('/orchestration')"><UiIcon name="arrow-left" /></el-button>
         <el-input v-model="form.name" style="width:240px" placeholder="工作流名称" />
         <el-tag size="small">{{ form.status }}</el-tag>
       </div>
       <div style="display:flex;gap:8px">
-        <el-button :loading="saving" @click="handleSave"><el-icon><Check /></el-icon> 保存</el-button>
-        <el-button type="primary" :loading="running" @click="handleRun"><el-icon><VideoPlay /></el-icon> 运行</el-button>
+        <el-button :loading="saving" @click="handleSave"><UiIcon name="check" /> 保存</el-button>
+        <el-button type="primary" :loading="running" @click="handleRun"><UiIcon name="play" /> 运行</el-button>
       </div>
     </div>
 
     <el-row :gutter="16">
       <!-- 画布 -->
       <el-col :span="16">
-        <el-card class="canvas-card">
+        <el-card class="canvas-card" shadow="never">
           <VueFlow
             v-model:nodes="nodes"
             v-model:edges="edges"
             fit-view-on-init
             class="vue-flow-canvas"
           >
-            <Background :gap="20" pattern-color="#dcdfe6" />
+            <Background :gap="20" pattern-color="#e8e9ee" />
             <Controls />
             <MiniMap />
 
@@ -364,7 +365,7 @@ onMounted(() => {
                 :style="{ outline: selectedNode?.id === props.id ? '2px solid var(--el-color-primary)' : 'none' }"
               >
                 <Handle type="target" :position="Position.Left" />
-                <el-icon class="wf-node-icon"><component :is="iconOf(props.data.nodeType)" /></el-icon>
+                <UiIcon class="wf-node-icon" :name="iconOf(props.data.nodeType)" :size="20" />
                 <div class="wf-node-label">{{ props.data.label }}</div>
                 <Handle type="source" :position="Position.Right" />
               </div>
@@ -462,12 +463,12 @@ onMounted(() => {
         <el-card style="margin-top:16px">
           <template #header><span>添加节点</span></template>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <el-button @click="addNode('start')"><el-icon class="ii"><CaretRight /></el-icon>开始</el-button>
-            <el-button @click="onClickAddNode('agent')"><el-icon class="ii"><Cpu /></el-icon>Agent 节点</el-button>
-            <el-button @click="onClickAddNode('tool')"><el-icon class="ii"><Tools /></el-icon>工具节点</el-button>
-            <el-button @click="addNode('condition')"><el-icon class="ii"><Share /></el-icon>条件节点</el-button>
-            <el-button @click="addNode('approval')"><el-icon class="ii"><Avatar /></el-icon>审批节点</el-button>
-            <el-button @click="addNode('end')"><el-icon class="ii"><VideoPause /></el-icon>结束</el-button>
+            <el-button @click="addNode('start')"><UiIcon name="play" class="ii" />开始</el-button>
+            <el-button @click="onClickAddNode('agent')"><UiIcon name="cpu" class="ii" />Agent 节点</el-button>
+            <el-button @click="onClickAddNode('tool')"><UiIcon name="tool" class="ii" />工具节点</el-button>
+            <el-button @click="addNode('condition')"><UiIcon name="split" class="ii" />条件节点</el-button>
+            <el-button @click="addNode('approval')"><UiIcon name="user" class="ii" />审批节点</el-button>
+            <el-button @click="addNode('end')"><UiIcon name="pause" class="ii" />结束</el-button>
           </div>
         </el-card>
       </el-col>
@@ -475,11 +476,11 @@ onMounted(() => {
 
     <!-- 选择已有 Agent / 工具 对话框 -->
     <el-dialog v-model="pickDialogVisible" :title="pickType === 'agent' ? '选择 Agent' : '选择工具'" width="480px">
-      <el-input v-model="pickKeyword" placeholder="搜索名称..." clearable prefix-icon="Search" style="margin-bottom:12px" />
+      <el-input v-model="pickKeyword" placeholder="搜索名称..." clearable :prefix-icon="Ic.search" style="margin-bottom:12px" />
       <div class="pick-list">
         <div v-for="item in pickOptions" :key="item.id" class="pick-item" @click="confirmPick(item)">
-          <el-icon v-if="pickType === 'agent'" class="ii"><Cpu /></el-icon>
-          <el-icon v-else class="ii"><Tools /></el-icon>
+          <UiIcon name="cpu" v-if="pickType === 'agent'" class="ii" />
+          <UiIcon name="tool" v-else class="ii" />
           <span>{{ item.displayName || item.name }}</span>
         </div>
         <el-empty v-if="pickOptions.length === 0" :description="pickType === 'agent' ? '没有可选的 Agent，请先创建 Agent' : '没有可选的工具，请先注册工具'" :image-size="60" />
@@ -492,7 +493,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.workflow-editor-page { max-width: 1400px; }
+.workflow-editor-page { max-width: 1400px; margin: 0 auto; }
 .branch-editor { width: 100%; display: flex; flex-direction: column; gap: 4px; }
 .branch-target { font-size: 12px; color: var(--el-text-color-secondary); }
 .canvas-card { position: relative; }
@@ -508,12 +509,12 @@ onMounted(() => {
   cursor: grab;
 }
 .wf-node:active { cursor: grabbing; }
-.wf-node.agent { border-color: #409eff; }
-.wf-node.tool { border-color: #909399; }
-.wf-node.condition { border-color: #e6a23c; }
-.wf-node.approval { border-color: #67c23a; }
-.wf-node.start { border-color: #409eff; background: #ecf5ff; }
-.wf-node.end { border-color: #f56c6c; background: #fef0f0; }
+.wf-node.agent { border-color: var(--accent); }
+.wf-node.tool { border-color: #9295a0; }
+.wf-node.condition { border-color: #b3730f; }
+.wf-node.approval { border-color: #178a5b; }
+.wf-node.start { border-color: var(--accent); background: var(--accent-soft); }
+.wf-node.end { border-color: var(--st-danger); background: var(--st-danger-bg); }
 .wf-node-icon { font-size: 20px; margin-bottom: 4px; }
 .wf-node-label { font-size: 13px; font-weight: 600; }
 .canvas-tip { font-size: 12px; text-align: center; padding: 8px; }

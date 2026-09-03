@@ -5,35 +5,35 @@ export const mockAgents: AgentSummary[] = [
     id: 1, name: '代码审查助手', description: '自动审查 PR 代码质量，输出改进建议',
     avatar: '09-search', status: 'published', modelName: 'Claude Opus 4.8',
     tags: ['code', 'review'], toolCount: 3, totalSessions: 230,
-    successRate: 0.982, avgLatencyMs: 1200, createdBy: 1, creatorName: '张三',
+    successRate: 98.2, avgLatencyMs: 1200, createdBy: 1, creatorName: '张三',
     updatedAt: '2026-07-14T09:00:00+08:00',
   },
   {
     id: 2, name: '文档生成器', description: '根据代码注释自动生成 API 文档',
     avatar: '05-document', status: 'published', modelName: 'GPT-4o',
     tags: ['docs', 'api'], toolCount: 2, totalSessions: 89,
-    successRate: 0.965, avgLatencyMs: 800, createdBy: 2, creatorName: '李四',
+    successRate: 96.5, avgLatencyMs: 800, createdBy: 2, creatorName: '李四',
     updatedAt: '2026-07-13T16:30:00+08:00',
   },
   {
     id: 3, name: '数据分析 Agent', description: '连接数据库，自然语言查询生成图表',
     avatar: '11-growth-chart', status: 'published', modelName: 'DeepSeek V4',
     tags: ['data', 'sql'], toolCount: 4, totalSessions: 156,
-    successRate: 0.942, avgLatencyMs: 2100, createdBy: 1, creatorName: '张三',
+    successRate: 94.2, avgLatencyMs: 2100, createdBy: 1, creatorName: '张三',
     updatedAt: '2026-07-12T11:00:00+08:00',
   },
   {
     id: 4, name: 'PR 审查机器人', description: '自动化 PR 评审，检查代码规范和安全漏洞',
     avatar: '23-ai-robot', status: 'testing', modelName: 'Claude Sonnet 4.6',
     tags: ['review', 'security'], toolCount: 3, totalSessions: 42,
-    successRate: 0.905, avgLatencyMs: 1500, createdBy: 3, creatorName: '王五',
+    successRate: 90.5, avgLatencyMs: 1500, createdBy: 3, creatorName: '王五',
     updatedAt: '2026-07-14T08:15:00+08:00',
   },
   {
     id: 5, name: '部署检查 Agent', description: '部署前自动检查配置、依赖和兼容性',
     avatar: '02-rocket', status: 'paused', modelName: 'Claude Haiku 4.5',
     tags: ['devops', 'deploy'], toolCount: 5, totalSessions: 67,
-    successRate: 0.821, avgLatencyMs: 3500, createdBy: 1, creatorName: '张三',
+    successRate: 82.1, avgLatencyMs: 3500, createdBy: 1, creatorName: '张三',
     updatedAt: '2026-07-10T14:00:00+08:00',
   },
   {
@@ -87,7 +87,7 @@ export const mockAgentDetail: AgentDetail = {
   },
   stats: {
     totalSessions: 230, totalMessages: 1840, totalTokens: 5200000,
-    totalCost: 123.50, successRate: 0.982, avgLatencyMs: 1200, avgStepsPerSession: 5.3,
+    totalCost: 123.50, successRate: 98.2, avgLatencyMs: 1200, avgStepsPerSession: 5.3,
   },
 }
 

@@ -77,15 +77,13 @@ function getResourceTypeLabel(type: string): string {
     <div class="page-header">
       <h2>审计日志</h2>
     </div>
-    <el-card class="mb-16">
-      <div class="filter-bar">
+    <el-card shadow="never">
+      <div class="toolbar">
         <el-input v-model="keyword" placeholder="搜索用户/详情/资源..." style="width:280px" clearable />
         <el-select v-model="actionFilter" placeholder="操作类型" style="width:180px" clearable>
           <el-option v-for="opt in actionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </div>
-    </el-card>
-    <el-card>
       <el-table :data="filteredLogs" size="small">
         <el-table-column label="时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
@@ -102,7 +100,7 @@ function getResourceTypeLabel(type: string): string {
         <el-table-column prop="ipAddress" label="IP" width="130" />
         <el-table-column label="结果" width="70" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small">
+            <el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small" round>
               {{ row.result === 'success' ? '成功' : '失败' }}
             </el-tag>
           </template>
@@ -114,7 +112,15 @@ function getResourceTypeLabel(type: string): string {
 </template>
 
 <style scoped>
-.audit-log-page { max-width: 1400px; }
-.filter-bar { display: flex; gap: 12px; }
-.mb-16 { margin-bottom: 16px; }
+.audit-log-page { max-width: 1400px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
 </style>

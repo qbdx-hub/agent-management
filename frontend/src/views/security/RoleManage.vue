@@ -73,9 +73,10 @@ onMounted(fetchRoles)
   <div class="role-manage-page">
     <div class="page-header">
       <h2>角色权限</h2>
-      <el-button type="primary" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建角色</el-button>
+      <el-button type="primary" @click="showCreate = true"><UiIcon name="plus" /> 新建角色</el-button>
     </div>
-    <el-row v-loading="loading" :gutter="20">
+    <el-empty v-if="!loading && roles.length === 0" description="暂无角色" />
+    <el-row v-else v-loading="loading" :gutter="20">
       <el-col v-for="role in roles" :key="role.id" :span="12">
         <el-card class="role-card mb-16">
           <div class="role-header">
@@ -116,7 +117,7 @@ onMounted(fetchRoles)
 </template>
 
 <style scoped>
-.role-manage-page { max-width: 1200px; }
+.role-manage-page { max-width: 1200px; margin: 0 auto; }
 .role-card { height: 100%; }
 .role-header { display: flex; align-items: center; justify-content: space-between; }
 .perm-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }

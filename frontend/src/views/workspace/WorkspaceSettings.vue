@@ -95,4 +95,4 @@ onMounted(load)
   </div>
 </template>
 
-<style scoped>.workspace-settings-page { max-width: 900px; }</style>
+<style scoped>.workspace-settings-page { max-width: 900px; margin: 0 auto; }</style>

@@ -36,6 +36,8 @@ export interface ExecutionStep {
   content?: string
   toolName?: string
   toolIcon?: string
+  /** 本次工具调用是否在沙箱外（用户授权后）执行 */
+  outsideSandbox?: boolean
   request?: Record<string, any>
   response?: Record<string, any>
   errorMessage?: string
@@ -65,6 +67,8 @@ export interface SendMessageDTO {
   content: string
   mode: ExecutionMode
   attachments?: string[]
+  /** 用户授权：本次消息允许在沙箱外运行（真实文件系统/工作目录） */
+  outsideSandbox?: boolean
 }
 
 // ==================== SSE 事件 ====================

@@ -25,7 +25,7 @@ const maxToken = computed(() => {
 })
 
 function healthColor(status: string) {
-  return status === 'healthy' ? '#67c23a' : status === 'warning' ? '#e6a23c' : '#f56c6c'
+  return status === 'healthy' ? '#178a5b' : status === 'warning' ? '#b3730f' : '#cf3f4f'
 }
 
 async function loadData() {
@@ -100,7 +100,7 @@ watch(period, loadData)
         <div class="metric-val">{{ formatNumber(overview.todayCallCount) }}</div>
         <div class="metric-lbl">今日调用</div>
         <div class="metric-trend" :class="overview.trends.callCountChange > 0 ? 'up' : 'down'">
-          <el-icon v-if="overview.trends.callCountChange > 0"><ArrowUp /></el-icon><el-icon v-else><ArrowDown /></el-icon> {{ Math.abs(overview.trends.callCountChange * 100).toFixed(1) }}%
+          <UiIcon :name="overview.trends.callCountChange > 0 ? 'chevron-up' : 'chevron-down'" :size="13" /> {{ Math.abs(overview.trends.callCountChange * 100).toFixed(1) }}%
         </div>
       </el-card>
       <el-card shadow="hover" class="metric-card">
@@ -148,7 +148,7 @@ watch(period, loadData)
               <span class="health-name">{{ agent.agentName }}</span>
               <span class="health-rate" :style="{ color: healthColor(agent.status) }">{{ formatPercent(agent.successRate) }}</span>
             </div>
-            <el-progress :percentage="agent.successRate * 100" :color="healthColor(agent.status)" :show-text="false" :stroke-width="6" />
+            <el-progress :percentage="agent.successRate != null ? Math.min(100, Math.max(0, agent.successRate)) : 0" :color="healthColor(agent.status)" :show-text="false" :stroke-width="6" />
             <div class="health-meta text-muted">{{ formatLatency(agent.avgLatencyMs) }} · {{ agent.callCount24h }} 次/24h</div>
           </div>
         </el-card>
@@ -185,18 +185,26 @@ watch(period, loadData)
 </template>
 
 <style scoped>
-.monitor-page { max-width: 1400px; }
+.monitor-page { max-width: 1200px; margin: 0 auto; }
+/* 6 个指标卡固定一行，窄屏逐级降为 3/2 列，避免第 6 张孤行 */
+.monitor-page .stats-row { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1200px) {
+  .monitor-page .stats-row { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 820px) {
+  .monitor-page .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
 .metric-card { text-align: center; }
 .metric-val { font-size: 28px; font-weight: 700; color: var(--el-color-primary); }
-.metric-lbl { color: #909399; font-size: 13px; margin-top: 2px; }
+.metric-lbl { color: var(--text-3); font-size: 13px; margin-top: 2px; }
 .metric-trend { font-size: 12px; margin-top: 4px; }
-.metric-trend.up { color: #67c23a; }
-.metric-trend.down { color: #f56c6c; }
+.metric-trend.up { color: var(--st-running); }
+.metric-trend.down { color: var(--st-danger); }
 .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 0 8px; }
 .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
 .bar-input { width: 100%; background: var(--el-color-primary); border-radius: 2px 2px 0 0; min-height: 2px; }
 .bar-output { width: 100%; background: var(--el-color-primary-light-5); border-radius: 2px 2px 0 0; min-height: 2px; }
-.bar-label { font-size: 10px; color: #909399; }
+.bar-label { font-size: 10px; color: var(--text-3); }
 .chart-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; font-size: 12px; }
 .legend-item { display: flex; align-items: center; gap: 4px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 2px; }

@@ -55,11 +55,13 @@ export function formatCost(cost: number): string {
 }
 
 /**
- * 格式化百分比
+ * 格式化百分比：入参为百分数（0-100，与后端 success_rate 列口径一致）。
+ * 空值/非数字显示「—」（无数据），越界截断到 [0, 100]。
  */
-export function formatPercent(rate: number): string {
-  if (rate == null) return '-'
-  return (rate * 100).toFixed(1) + '%'
+export function formatPercent(rate: number | null | undefined): string {
+  if (rate == null || Number.isNaN(rate)) return '—'
+  const v = Math.min(100, Math.max(0, rate))
+  return v.toFixed(1) + '%'
 }
 
 /**

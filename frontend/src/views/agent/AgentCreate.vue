@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agent'
 import { getModelCatalog, groupModelsByProvider } from '@/api/model'
 import type { ModelProviderGroup } from '@/types/model'
+import { AVATAR_OPTIONS } from '@/components/icons'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -17,7 +18,7 @@ const form = reactive({
 })
 
 const tagInput = ref('')
-const avatarOptions = ['23-ai-robot', '07-lightbulb', '02-rocket', '24-trophy', '25-medal', '16-tea', '21-moon', '27-gift', '26-guitar', '19-camera', '03-bell', '14-globe']
+const avatarOptions = AVATAR_OPTIONS
 
 // 模型目录：来自后端 model_pricing 表（GET /models）
 const providers = ref<ModelProviderGroup[]>([])
@@ -64,7 +65,7 @@ async function handleFinish() {
 <template>
   <div class="agent-create-page">
     <div class="page-header"><h2>创建 Agent</h2><el-button @click="router.push('/agents')">返回列表</el-button></div>
-    <el-card>
+    <el-card shadow="never">
       <el-steps :active="currentStep" finish-status="success" style="margin-bottom:32px">
         <el-step title="基础信息" /><el-step title="模型配置" /><el-step title="确认创建" />
       </el-steps>
@@ -79,7 +80,7 @@ async function handleFinish() {
           <el-form-item label="名称" required><el-input v-model="form.name" placeholder="例如：代码审查助手" maxlength="50" /></el-form-item>
           <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" placeholder="描述这个 Agent 的用途..." maxlength="200" /></el-form-item>
           <el-form-item label="标签">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><el-tag v-for="tag in form.tags" :key="tag" closable @close="removeTag(tag)">{{ tag }}</el-tag></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><el-tag v-for="tag in form.tags" :key="tag" closable round @close="removeTag(tag)">{{ tag }}</el-tag></div>
             <el-input v-model="tagInput" size="small" placeholder="输入标签后回车" @keyup.enter="addTag" />
           </el-form-item>
         </el-form>
@@ -99,7 +100,7 @@ async function handleFinish() {
           <el-descriptions-item label="头像"><AgentAvatar :avatar="form.avatar" :size="32" /></el-descriptions-item>
           <el-descriptions-item label="名称">{{ form.name }}</el-descriptions-item>
           <el-descriptions-item label="描述">{{ form.description || '未填写' }}</el-descriptions-item>
-          <el-descriptions-item label="标签"><el-tag v-for="tag in form.tags" :key="tag" style="margin-right:4px">{{ tag }}</el-tag><span v-if="!form.tags.length" class="text-muted">无</span></el-descriptions-item>
+          <el-descriptions-item label="标签"><el-tag v-for="tag in form.tags" :key="tag" round style="margin-right:4px">{{ tag }}</el-tag><span v-if="!form.tags.length" class="text-muted">无</span></el-descriptions-item>
           <el-descriptions-item label="模型">{{ selectedProvider?.name || form.modelProvider }} / {{ form.modelName }}</el-descriptions-item>
           <el-descriptions-item label="Temperature">{{ form.temperature }}</el-descriptions-item>
           <el-descriptions-item label="Max Tokens">{{ form.maxTokens }}</el-descriptions-item>
@@ -117,7 +118,7 @@ async function handleFinish() {
 </template>
 
 <style scoped>
-.agent-create-page { max-width: 900px; }
+.agent-create-page { max-width: 900px; margin: 0 auto; }
 .avatar-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .avatar-option { font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
 .avatar-option:hover { background: var(--el-fill-color-light); }

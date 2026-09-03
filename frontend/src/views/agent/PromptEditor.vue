@@ -66,30 +66,33 @@ function handleVersionClick(version: any) {
   <div class="prompt-editor" v-if="agent">
     <el-row :gutter="20">
       <el-col :span="16">
-        <div class="editor-header">
-          <span>System Prompt</span>
-          <div class="editor-actions">
-            <el-button size="small" @click="showVersionDrawer = true">版本历史</el-button>
-            <el-button type="primary" size="small" :loading="loading" @click="handleSave">保存</el-button>
-          </div>
-        </div>
-        <el-input
-          v-model="prompt"
-          type="textarea"
-          :rows="18"
-          class="prompt-textarea"
-          placeholder="输入 System Prompt..."
-          style="font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace"
-        />
-        <div class="prompt-tip text-muted">支持变量语法：<code v-text="tipExample1"></code>，例如 <code v-text="tipExample2"></code></div>
+        <el-card shadow="never" class="editor-card">
+          <template #header>
+            <div class="editor-header">
+              <span>System Prompt</span>
+              <div class="editor-actions">
+                <el-button size="small" @click="showVersionDrawer = true">版本历史</el-button>
+                <el-button type="primary" size="small" :loading="loading" @click="handleSave">保存</el-button>
+              </div>
+            </div>
+          </template>
+          <el-input
+            v-model="prompt"
+            type="textarea"
+            :rows="18"
+            class="prompt-textarea"
+            placeholder="输入 System Prompt..."
+          />
+          <div class="prompt-tip">支持变量语法：<code v-text="tipExample1"></code>，例如 <code v-text="tipExample2"></code></div>
+        </el-card>
       </el-col>
       <el-col :span="8">
-        <el-card>
+        <el-card shadow="never" class="var-card">
           <template #header><span>变量列表</span></template>
-          <div v-if="variables.length === 0" class="text-muted" style="padding:12px 0">暂无变量</div>
+          <div v-if="variables.length === 0" class="text-muted var-empty">暂无变量，在下方 Prompt 中使用 <code v-text="'{{name}}'"></code> 语法后可在此插入</div>
           <div v-for="v in variables" :key="v.name" class="var-item" @click="insertVariable(v.name)">
             <div class="var-name">{{ varName(v.name) }}</div>
-            <div class="var-meta text-muted">{{ v.label }} · {{ v.type }} {{ v.required ? '(必填)' : '' }}</div>
+            <div class="var-meta">{{ v.label }} · {{ v.type }} {{ v.required ? '(必填)' : '' }}</div>
           </div>
         </el-card>
       </el-col>
@@ -108,17 +111,26 @@ function handleVersionClick(version: any) {
 </template>
 
 <style scoped>
-.prompt-editor { padding: 20px 0; }
-.editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-weight: 600; }
+.prompt-editor { padding: 16px 0 0; }
+.editor-card { height: 100%; }
+.editor-card :deep(.el-card__body) { padding: 16px; }
+.editor-header { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
 .editor-actions { display: flex; gap: 8px; }
-.prompt-textarea :deep(textarea) { font-size: 14px; line-height: 1.6; }
-.prompt-tip { font-size: 12px; margin-top: 8px; }
-.var-item { padding: 10px; border-bottom: 1px solid var(--el-border-color-lighter); cursor: pointer; transition: background 0.2s; }
-.var-item:hover { background: var(--el-fill-color-light); }
-.var-name { font-family: monospace; font-size: 13px; color: var(--el-color-primary); }
-.var-meta { font-size: 12px; }
-.version-item { padding: 12px; border-bottom: 1px solid var(--el-border-color-lighter); cursor: pointer; transition: background 0.2s; }
-.version-item:hover { background: var(--el-fill-color-light); }
+.prompt-textarea :deep(textarea) {
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+.prompt-tip { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+.var-card { height: 100%; }
+.var-empty { padding: 12px 0; font-size: 12.5px; line-height: 1.7; }
+.var-item { padding: 10px; border-bottom: 1px solid var(--border-1); cursor: pointer; transition: background 0.2s; }
+.var-item:hover { background: var(--bg-hover); }
+.var-item:last-child { border-bottom: none; }
+.var-name { font-family: var(--font-num); font-size: 13px; color: var(--accent); }
+.var-meta { font-size: 12px; color: var(--text-3); }
+.version-item { padding: 12px; border-bottom: 1px solid var(--border-1); cursor: pointer; transition: background 0.2s; }
+.version-item:hover { background: var(--bg-hover); }
 .version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.version-note { font-size: 12px; }
+.version-note { font-size: 12px; color: var(--text-3); }
 </style>

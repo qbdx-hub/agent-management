@@ -70,15 +70,15 @@ onMounted(fetchMembers)
   <div class="member-manage-page">
     <div class="page-header">
       <h2>成员管理</h2>
-      <el-button type="primary" @click="showInvite = true"><el-icon><Plus /></el-icon> 邀请成员</el-button>
+      <el-button type="primary" @click="showInvite = true"><UiIcon name="plus" /> 邀请成员</el-button>
     </div>
-    <el-card v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="table-card">
       <el-table :data="members">
         <el-table-column label="成员" min-width="180">
           <template #default="{ row }">
             <div style="display:flex;align-items:center;gap:10px">
-              <el-avatar :size="32" icon="UserFilled" :src="row.avatar || undefined" />
-              <div><div style="font-weight:500">{{ row.nickname }}</div><div class="text-muted" style="font-size:12px">{{ row.email }}</div></div>
+              <el-avatar :size="32" :src="row.avatar || undefined"><UiIcon name="user" :size="16" /></el-avatar>
+              <div><div class="member-name">{{ row.nickname }}</div><div class="member-email">{{ row.email }}</div></div>
             </div>
           </template>
         </el-table-column>
@@ -89,10 +89,10 @@ onMounted(fetchMembers)
             </el-select>
           </template>
         </el-table-column>
-        <el-table-column label="Agent 数" width="80"><template #default="{ row }">{{ row.agentCount }}</template></el-table-column>
-        <el-table-column label="30天会话" width="90"><template #default="{ row }">{{ row.sessionCount30d }}</template></el-table-column>
-        <el-table-column label="加入时间" width="160"><template #default="{ row }">{{ row.joinedAt ? formatDateTime(row.joinedAt) : '-' }}</template></el-table-column>
-        <el-table-column label="最后活跃" width="160"><template #default="{ row }">{{ row.lastActiveAt ? formatDateTime(row.lastActiveAt) : '-' }}</template></el-table-column>
+        <el-table-column label="Agent 数" width="90"><template #default="{ row }"><span class="num">{{ row.agentCount }}</span></template></el-table-column>
+        <el-table-column label="30天会话" width="100"><template #default="{ row }"><span class="num">{{ row.sessionCount30d }}</span></template></el-table-column>
+        <el-table-column label="加入时间" width="160"><template #default="{ row }">{{ row.joinedAt ? formatDateTime(row.joinedAt) : '—' }}</template></el-table-column>
+        <el-table-column label="最后活跃" width="160"><template #default="{ row }">{{ row.lastActiveAt ? formatDateTime(row.lastActiveAt) : '—' }}</template></el-table-column>
         <el-table-column label="" width="70">
           <template #default="{ row }">
             <el-button v-if="row.role !== 'owner'" text type="danger" size="small" @click="handleRemove(row)">移除</el-button>
@@ -112,4 +112,14 @@ onMounted(fetchMembers)
   </div>
 </template>
 
-<style scoped>.member-manage-page { max-width: 1200px; }</style>
+<style scoped>
+.member-manage-page { max-width: 1200px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
+.member-name { font-weight: 600; font-size: 13.5px; color: var(--text-1); }
+.member-email { font-size: 12px; color: var(--text-3); }
+</style>

@@ -34,7 +34,7 @@ function getStrengthLabel(s: number) {
 }
 
 function getStrengthColor(s: number) {
-  return ['', '#ef4444', '#f59e0b', '#3b82f6', '#10b981'][s] || ''
+  return ['', '#cf3f4f', '#b3730f', '#5a54e8', '#178a5b'][s] || ''
 }
 
 async function handleRegister() {

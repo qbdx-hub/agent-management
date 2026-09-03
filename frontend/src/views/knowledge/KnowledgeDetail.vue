@@ -233,12 +233,12 @@ function statusLabel(status: string) {
   <div class="knowledge-detail-page" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <el-button text @click="router.push('/knowledge')"><el-icon><ArrowLeft /></el-icon></el-button>
+        <el-button text @click="router.push('/knowledge')"><UiIcon name="arrow-left" /></el-button>
         <h2>{{ kb?.name || '知识库详情' }}</h2>
       </div>
     </div>
-    <el-card>
-      <el-tabs v-model="activeTab" @tab-change="(tab: string | number) => { if (tab === 'settings') initSettings() }">
+    <!-- 标签页直接落在页面上，与其他详情页保持一致 -->
+    <el-tabs v-model="activeTab" class="kb-tabs" @tab-change="(tab: string | number) => { if (tab === 'settings') initSettings() }">
         <el-tab-pane label="文档" name="documents">
           <!-- 上传区域 -->
           <div style="margin-bottom:16px">
@@ -253,7 +253,7 @@ function statusLabel(status: string) {
               accept=".pdf,.md,.txt,.json,.js,.ts,.jsx,.tsx,.py,.java,.go,.rs,.c,.cpp,.h,.hpp,.css,.scss,.less,.html,.xml,.yaml,.yml,.sh,.bat,.sql"
               multiple
             >
-              <el-icon style="font-size:40px;color:#909399"><UploadFilled /></el-icon>
+              <UiIcon name="upload" style="font-size:40px;color:var(--text-3)" />
               <div>拖拽文件到此处，或 <em>点击上传</em></div>
               <div class="text-muted" style="font-size:12px">
                 支持 PDF / Markdown / TXT / 代码文件，单文件最大 {{ MAX_FILE_SIZE / 1024 / 1024 }}MB
@@ -263,7 +263,7 @@ function statusLabel(status: string) {
             <!-- 上传进度条 -->
             <div v-if="uploading" class="upload-progress">
               <div class="progress-info">
-                <el-icon class="is-loading"><Loading /></el-icon>
+                <UiIcon name="loader" class="is-loading" />
                 <span>正在上传: {{ uploadingFileName }}</span>
                 <span class="progress-percent">{{ uploadProgress }}%</span>
               </div>
@@ -272,11 +272,13 @@ function statusLabel(status: string) {
           </div>
 
           <!-- 文档表格 -->
-          <el-table :data="documents">
+          <el-table v-if="documents.length > 0" :data="documents">
             <el-table-column prop="name" label="文件名" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="chunkCount" label="分块数" width="80" align="center" />
-            <el-table-column label="Token" width="90" align="center">
-              <template #default="{ row }">{{ row.totalTokens }}</template>
+            <el-table-column prop="chunkCount" label="分块数" width="80" align="center">
+              <template #default="{ row }"><span class="num">{{ row.chunkCount }}</span></template>
+            </el-table-column>
+            <el-table-column label="Token" width="110" align="center">
+              <template #default="{ row }"><span class="num">{{ row.totalTokens }}</span></template>
             </el-table-column>
             <el-table-column label="状态" width="100" align="center">
               <template #default="{ row }">
@@ -303,6 +305,7 @@ function statusLabel(status: string) {
             <el-input v-model="searchQuery" placeholder="输入检索问题..." @keyup.enter="handleSearch" />
             <el-button type="primary" :loading="searching" @click="handleSearch">检索</el-button>
           </div>
+          <el-empty v-if="!searching && searchResults.length === 0 && !searchQuery" description="输入问题并点击「检索」，验证知识库的召回效果" />
           <div v-for="(r, idx) in searchResults" :key="idx" class="search-result">
             <div class="result-header">
               <span>{{ r.documentTitle }} · Chunk #{{ r.chunkIndex }}</span>
@@ -330,13 +333,13 @@ function statusLabel(status: string) {
           </el-form>
         </el-tab-pane>
       </el-tabs>
-    </el-card>
   </div>
 </template>
 
 <style scoped>
-.knowledge-detail-page { max-width: 1200px; }
-.search-result { padding: 12px; border: 1px solid var(--el-border-color-lighter); border-radius: 6px; margin-bottom: 12px; }
+.knowledge-detail-page { max-width: 1200px; margin: 0 auto; }
+.kb-tabs { margin-top: 8px; }
+.search-result { padding: 12px; border: 1px solid var(--border-1); border-radius: 8px; margin-bottom: 12px; }
 .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 500; }
 .result-content { font-size: 13px; line-height: 1.6; }
 .result-content :deep(.highlight) { background: #fef08a; color: #b45309; padding: 1px 2px; border-radius: 2px; }

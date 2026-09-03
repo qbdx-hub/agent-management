@@ -141,7 +141,7 @@ async function handleSubmit() {
         <el-form-item label="超时(ms)"><el-input-number v-model="form.endpoint.timeoutMs" :min="1000" :max="60000" :step="1000" /></el-form-item>
 
         <el-divider content-position="left">参数定义</el-divider>
-        <el-button size="small" @click="addParameter" style="margin-bottom:12px"><el-icon><Plus /></el-icon> 添加参数</el-button>
+        <el-button size="small" @click="addParameter" style="margin-bottom:12px"><UiIcon name="plus" /> 添加参数</el-button>
         <el-table v-if="form.parameters.length > 0" :data="form.parameters" border size="small">
           <el-table-column label="名称" width="150"><template #default="{ row }"><el-input v-model="row.name" size="small" /></template></el-table-column>
           <el-table-column label="类型" width="120">
@@ -174,4 +174,4 @@ async function handleSubmit() {
   </div>
 </template>
 
-<style scoped>.tool-register-page { max-width: 1000px; }</style>
+<style scoped>.tool-register-page { max-width: 1000px; margin: 0 auto; }</style>

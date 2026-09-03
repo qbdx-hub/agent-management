@@ -79,7 +79,7 @@ function handleCancel() {
   <div class="knowledge-create-page">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <el-button text @click="handleCancel"><el-icon><ArrowLeft /></el-icon></el-button>
+        <el-button text @click="handleCancel"><UiIcon name="arrow-left" /></el-button>
         <h2>新建知识库</h2>
       </div>
     </div>
@@ -153,6 +153,7 @@ function handleCancel() {
 <style scoped>
 .knowledge-create-page {
   max-width: 900px;
+  margin: 0 auto;
 }
 .page-header {
   margin-bottom: 20px;
@@ -164,6 +165,6 @@ function handleCancel() {
 .form-tip {
   margin-left: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-3);
 }
 </style>

@@ -115,20 +115,22 @@ onMounted(fetchList)
   <div class="workflow-list-page">
     <div class="page-header">
       <h2>Agent 编排</h2>
-      <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon> 创建工作流</el-button>
+      <el-button type="primary" @click="handleCreate"><UiIcon name="plus" /> 创建工作流</el-button>
     </div>
-    <el-card v-loading="loading">
+    <el-card v-loading="loading" shadow="never" class="table-card">
       <el-table :data="workflows">
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="nodeCount" label="节点数" width="80" />
+        <el-table-column prop="nodeCount" label="节点数" width="80">
+          <template #default="{ row }"><span class="num">{{ row.nodeCount }}</span></template>
+        </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            <el-tag :type="statusType(row.status)" size="small" round>{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="创建者" width="110">
-          <template #default="{ row }">{{ row.creatorName || '-' }}</template>
+          <template #default="{ row }">{{ row.creatorName || '—' }}</template>
         </el-table-column>
         <el-table-column label="更新时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
@@ -175,10 +177,10 @@ onMounted(fetchList)
           <template #default="{ row }">{{ formatDateTime(row.startedAt || row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="耗时" width="90">
-          <template #default="{ row }">{{ row.duration != null ? row.duration + 's' : '-' }}</template>
+          <template #default="{ row }"><span class="num">{{ row.duration != null ? row.duration + 's' : '—' }}</span></template>
         </el-table-column>
         <el-table-column label="费用" width="90">
-          <template #default="{ row }">{{ row.totalCost != null ? '¥' + row.totalCost.toFixed(4) : '-' }}</template>
+          <template #default="{ row }"><span class="num">{{ row.totalCost != null ? '¥' + row.totalCost.toFixed(4) : '—' }}</span></template>
         </el-table-column>
         <el-table-column label="操作" width="90">
           <template #default="{ row }">
@@ -191,4 +193,12 @@ onMounted(fetchList)
   </div>
 </template>
 
-<style scoped>.workflow-list-page { max-width: 1200px; }</style>
+<style scoped>
+.workflow-list-page { max-width: 1200px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
+</style>

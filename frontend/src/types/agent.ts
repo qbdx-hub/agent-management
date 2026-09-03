@@ -18,7 +18,7 @@ export interface AgentSummary {
   tags: string[]
   toolCount: number
   totalSessions: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   createdBy: number
   creatorName: string
@@ -76,7 +76,7 @@ export interface AgentStats {
   totalMessages: number
   totalTokens: number
   totalCost: number
-  successRate: number
+  successRate: number | null
   avgLatencyMs: number
   avgStepsPerSession: number
 }

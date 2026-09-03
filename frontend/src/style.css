@@ -1,4 +1,4 @@
-/* Global Reset & Base Styles */
+/* 全局基础样式 · 接入设计令牌（src/styles/tokens.css） */
 *,
 *::before,
 *::after {
@@ -8,14 +8,20 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-family: var(--font-ui);
   font-size: 14px;
-  line-height: 1.5;
-  color: #333;
-  background: #f5f7fa;
+  line-height: 1.55;
+  color: var(--text-1);
+  background: var(--bg-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 等宽 tabular 数字：所有统计数字统一使用 */
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
 }
 
 /* Scrollbar */
@@ -24,8 +30,11 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #d3d5dd;
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b9bcc6;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -43,7 +52,8 @@ body {
 .mt-24 { margin-top: 24px; }
 
 /* Text helpers */
-.text-muted { color: #909399; }
+.text-muted { color: var(--text-3); }
+.text-secondary { color: var(--text-2); }
 .text-primary { color: var(--el-color-primary); }
 .text-success { color: var(--el-color-success); }
 .text-warning { color: var(--el-color-warning); }
@@ -53,7 +63,7 @@ body {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 /* Stat cards row */
@@ -71,6 +81,13 @@ body {
   justify-content: space-between;
   margin-bottom: 20px;
 }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: var(--text-1);
+  margin: 0;
+}
 
 /* Filter bar */
 .filter-bar {
@@ -80,15 +97,23 @@ body {
   flex-wrap: wrap;
 }
 
-/* 行内小图标（替代 emoji 的 el-icon / PNG 统一基线与间距） */
+/* 空态/加载占位通用文案色 */
+.empty-hint {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* 行内小图标（UiIcon svg）统一基线与间距 */
 .ii {
   vertical-align: -0.18em;
   margin-right: 3px;
 }
-.ii-img {
-  width: 1em;
-  height: 1em;
-  object-fit: contain;
-  vertical-align: -0.18em;
-  margin-right: 3px;
+
+/* UiIcon 加载旋转（EP 的 .el-icon.is-loading 选择器覆盖不到 svg） */
+@keyframes ui-rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+svg.is-loading {
+  animation: ui-rotating 1.6s linear infinite;
 }

@@ -93,4 +93,4 @@ async function handleSave() {
   </div>
 </template>
 
-<style scoped>.memory-config { padding: 20px 0; }</style>
+<style scoped>.memory-config { padding: 16px 0 0; }</style>

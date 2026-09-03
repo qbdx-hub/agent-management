@@ -99,11 +99,9 @@ async function submitProfile() {
 <template>
   <div class="top-header">
     <div class="top-header-left">
-      <el-button
-        :icon="appStore.sidebarCollapsed ? 'Expand' : 'Fold'"
-        text
-        @click="appStore.toggleSidebar()"
-      />
+      <el-button text @click="appStore.toggleSidebar()">
+        <UiIcon name="sidebar" :size="18" />
+      </el-button>
       <el-breadcrumb separator="/">
         <el-breadcrumb-item :to="{ path: '/dashboard' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item v-if="$route.meta.title" :to="$route.path">
@@ -131,9 +129,9 @@ async function submitProfile() {
       <!-- 用户信息 -->
       <el-dropdown trigger="click" @command="handleCommand">
         <span class="user-info">
-          <el-avatar :size="28" icon="UserFilled" />
+          <el-avatar :size="28"><UiIcon name="user" :size="15" /></el-avatar>
           <span class="user-name">{{ userStore.user?.nickname || userStore.user?.username || '用户' }}</span>
-          <el-icon><ArrowDown /></el-icon>
+          <UiIcon name="chevron-down" :size="14" />
         </span>
         <template #dropdown>
           <el-dropdown-menu>
@@ -199,7 +197,18 @@ async function submitProfile() {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--r-pill);
+  transition: background 0.15s ease-out;
+}
+.user-info:hover {
+  background: var(--bg-hover);
+}
+.user-info :deep(.el-avatar) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
 }
 .user-name {
   max-width: 100px;

@@ -1,17 +1,48 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agent'
+import { useUserStore } from '@/stores/user'
+import { getMonitorOverview } from '@/api/monitor'
+import type { MonitorOverview } from '@/types/monitor'
 import AgentCard from './components/AgentCard.vue'
 import RecentTasks from './components/RecentTasks.vue'
 import QuickCreate from './components/QuickCreate.vue'
+import { formatTokens, formatPercent } from '@/utils/format'
 
 const router = useRouter()
 const agentStore = useAgentStore()
+const userStore = useUserStore()
 const showCreateDialog = ref(false)
 
-onMounted(() => {
+const overview = ref<MonitorOverview | null>(null)
+const overviewLoading = ref(true)
+
+const totalCount = computed(() => agentStore.list.length)
+const publishedCount = computed(() => agentStore.list.filter(a => a.status === 'published').length)
+const testingCount = computed(() => agentStore.list.filter(a => a.status === 'testing').length)
+const draftCount = computed(() => agentStore.list.filter(a => a.status === 'draft').length)
+
+// 页头状态一句话来自真实统计
+const statusLine = computed(() => {
+  const running = overview.value?.runningTaskCount ?? 0
+  return running > 0
+    ? `${totalCount.value} 个 Agent，${running} 个会话进行中`
+    : `${totalCount.value} 个 Agent`
+})
+
+const nickname = computed(() => userStore.user?.nickname || userStore.user?.username || '用户')
+
+onMounted(async () => {
   agentStore.fetchAgentList()
+  try {
+    const res = await getMonitorOverview('today')
+    if (res.code === 0 && res.data) {
+      overview.value = res.data
+    }
+  } catch { /* 概览数据取不到时显示占位 */ } finally {
+    overviewLoading.value = false
+  }
 })
 
 function handleAgentCreated(id: number) {
@@ -22,78 +53,186 @@ function handleAgentCreated(id: number) {
 
 <template>
   <div class="dashboard-page">
-    <div class="welcome-section">
-      <h2>
-        <svg class="ii" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
-          <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
-          <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
-          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
-          <path d="M4 9c-.6-1-.6-2.4 0-3.6" />
-        </svg>
-        欢迎回来
-      </h2>
-      <p class="text-muted">管理你的 AI Agent，查看运行状态</p>
+    <div class="page-head">
+      <h1>欢迎回来，{{ nickname }}</h1>
+      <span class="status-line">{{ statusLine }}</span>
     </div>
 
-    <div class="stats-row">
-      <el-card shadow="hover" class="stat-card">
-        <div class="stat-value">{{ agentStore.list.length }}</div>
-        <div class="stat-label">Agent 总数</div>
-      </el-card>
-      <el-card shadow="hover" class="stat-card">
-        <div class="stat-value text-success">{{ agentStore.list.filter(a => a.status === 'published').length }}</div>
-        <div class="stat-label">已发布</div>
-      </el-card>
-      <el-card shadow="hover" class="stat-card">
-        <div class="stat-value text-warning">{{ agentStore.list.filter(a => a.status === 'testing').length }}</div>
-        <div class="stat-label">调试中</div>
-      </el-card>
-      <el-card shadow="hover" class="stat-card">
-        <div class="stat-value text-muted">{{ agentStore.list.filter(a => a.status === 'draft').length }}</div>
-        <div class="stat-label">草稿</div>
-      </el-card>
+    <!-- 概览：四张等宽指标卡，数值 tabular，加载用骨架 -->
+    <div class="overview">
+      <div class="metric">
+        <div class="label">Agent 总数</div>
+        <div class="value num">{{ totalCount }}</div>
+        <div class="delta">{{ draftCount }} 个草稿</div>
+      </div>
+      <div class="metric">
+        <div class="label">已发布</div>
+        <div class="value num">{{ publishedCount }}</div>
+        <div class="delta">{{ testingCount }} 个调试中</div>
+      </div>
+      <div class="metric">
+        <div class="label">进行中会话</div>
+        <div class="value num accent">
+          <el-skeleton v-if="overviewLoading" :rows="1" animated style="width:48px" />
+          <template v-else>{{ overview ? overview.runningTaskCount : '—' }}</template>
+        </div>
+        <div class="delta">
+          <template v-if="overview">今日调用 {{ overview.todayCallCount }} 次</template>
+          <template v-else>&nbsp;</template>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">今日 Token</div>
+        <div class="value num">
+          <el-skeleton v-if="overviewLoading" :rows="1" animated style="width:64px" />
+          <template v-else>{{ overview ? formatTokens(overview.totalTokensToday) : '—' }}</template>
+        </div>
+        <div class="delta">
+          <template v-if="overview">今日成功率 {{ formatPercent(overview.successRate) }}</template>
+          <template v-else>&nbsp;</template>
+        </div>
+      </div>
     </div>
 
-    <el-row :gutter="20">
-      <el-col :span="16">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>我的 Agent</span>
-              <el-button type="primary" @click="showCreateDialog = true"><el-icon><Plus /></el-icon> 新建 Agent</el-button>
-            </div>
-          </template>
-          <div class="card-grid">
-            <AgentCard v-for="agent in agentStore.list" :key="agent.id" :agent="agent" @click="router.push(`/agents/${agent.id}`)" />
-          </div>
-          <el-empty v-if="agentStore.list.length === 0" description="还没有 Agent，点击上方按钮创建" />
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card class="mb-24">
-          <template #header><span>快速操作</span></template>
-          <div class="quick-actions">
-            <el-button @click="router.push('/agents/create')" style="width:100%"><el-icon><Plus /></el-icon> 创建 Agent</el-button>
-            <el-button @click="router.push('/tools/register')" style="width:100%"><el-icon><SetUp /></el-icon> 注册工具</el-button>
-            <el-button @click="router.push('/monitor')" style="width:100%"><el-icon><Monitor /></el-icon> 查看监控</el-button>
-          </div>
-        </el-card>
+    <div class="content-layout">
+      <!-- 左：我的 Agent（去掉外层卡片，网格直接落在页面上） -->
+      <section class="agents-section">
+        <div class="section-head">
+          <h2>我的 Agent<span class="sub">共 {{ totalCount }} 个</span></h2>
+          <el-button type="primary" @click="showCreateDialog = true">
+            <UiIcon name="plus" />新建 Agent
+          </el-button>
+        </div>
+        <div v-if="agentStore.list.length > 0" class="agent-grid">
+          <AgentCard
+            v-for="agent in agentStore.list"
+            :key="agent.id"
+            :agent="agent"
+            @click="router.push(`/agents/${agent.id}/chat`)"
+          />
+        </div>
+        <el-empty v-else description="还没有 Agent，点击右上角按钮创建第一个" />
+      </section>
+
+      <!-- 右：最近任务 + 快捷入口（原「快速操作」卡降级为链接列表） -->
+      <aside class="side-col">
         <RecentTasks />
-      </el-col>
-    </el-row>
+        <div class="panel">
+          <div class="panel-head">快捷入口</div>
+          <div class="quick-links">
+            <div class="ql" @click="router.push('/tools/register')"><span>注册工具</span><span class="arrow">→</span></div>
+            <div class="ql" @click="router.push('/monitor')"><span>查看监控</span><span class="arrow">→</span></div>
+            <div class="ql" @click="router.push('/cost')"><span>成本报表</span><span class="arrow">→</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
     <QuickCreate v-model="showCreateDialog" @created="handleAgentCreated" />
   </div>
 </template>
 
 <style scoped>
-.dashboard-page { max-width: 1400px; }
-.welcome-section { margin-bottom: 24px; }
-.welcome-section h2 { font-size: 24px; margin-bottom: 4px; }
-.stat-card { text-align: center; }
-.stat-value { font-size: 32px; font-weight: 700; color: var(--el-color-primary); line-height: 1.2; }
-.stat-label { color: #909399; font-size: 13px; margin-top: 4px; }
-.card-header { display: flex; align-items: center; justify-content: space-between; }
-.quick-actions { display: flex; flex-direction: column; gap: 10px; }
-.quick-actions .el-button { margin-left: 0; }
+.dashboard-page {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* 页头 */
+.page-head { margin-bottom: 24px; }
+.page-head h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  line-height: 1.3;
+}
+.status-line { font-size: 13.5px; color: var(--text-2); margin-top: 2px; display: block; }
+
+/* 概览四卡 */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.metric {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px;
+}
+.metric .label { font-size: 12.5px; color: var(--text-2); margin-bottom: 6px; }
+.metric .value {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.metric .value.accent { color: var(--accent); }
+.metric .delta { font-size: 12px; color: var(--text-3); margin-top: 3px; min-height: 18px; }
+
+/* 双栏 */
+.content-layout {
+  display: grid;
+  grid-template-columns: 1fr 316px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* 我的 Agent */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.section-head h2 { font-size: 17px; font-weight: 800; letter-spacing: -0.2px; }
+.section-head .sub { font-size: 13px; color: var(--text-3); margin-left: 8px; font-weight: 400; }
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+/* 右栏 */
+.side-col { display: flex; flex-direction: column; gap: 18px; }
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+}
+.panel-head {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border-1);
+  font-size: 14px;
+  font-weight: 700;
+}
+.quick-links { padding: 8px 18px 12px; }
+.ql {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0;
+  font-size: 13.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s ease-out;
+}
+.ql:hover { color: var(--accent); }
+.ql + .ql { border-top: 1px solid var(--border-1); }
+.ql .arrow { color: var(--text-3); }
+.ql:hover .arrow { color: var(--accent); }
+
+@media (max-width: 1200px) {
+  .content-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 820px) {
+  .overview { grid-template-columns: repeat(2, 1fr); }
+  .agent-grid { grid-template-columns: 1fr; }
+}
 </style>

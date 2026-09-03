@@ -44,13 +44,13 @@ function goToChat(id: number) {
     <div class="page-header">
       <h2>Agent 管理</h2>
       <el-button type="primary" @click="router.push('/agents/create')">
-        <el-icon><Plus /></el-icon> 创建 Agent
+        <UiIcon name="plus" />新建 Agent
       </el-button>
     </div>
 
-    <!-- 筛选栏 -->
-    <el-card class="mb-16">
-      <div class="filter-bar">
+    <!-- 搜索/筛选与表格合并为一张卡 -->
+    <el-card shadow="never" class="table-card">
+      <div class="toolbar">
         <el-input
           v-model="agentStore.filter.keyword"
           placeholder="搜索 Agent 名称..."
@@ -70,38 +70,43 @@ function goToChat(id: number) {
         </el-select>
         <el-button @click="handleSearch">搜索</el-button>
       </div>
-    </el-card>
 
-    <!-- 表格 -->
-    <el-card>
       <el-table :data="agentStore.list" v-loading="agentStore.loading" style="width: 100%">
-        <el-table-column label="Agent" min-width="200">
+        <el-table-column label="Agent" min-width="220">
           <template #default="{ row }">
             <div class="agent-cell" @click="router.push(`/agents/${row.id}`)">
-              <AgentAvatar :avatar="row.avatar" :size="40" />
+              <AgentAvatar :avatar="row.avatar" :size="36" />
               <div>
                 <div class="agent-name">{{ row.name }}</div>
-                <div class="agent-desc text-muted">{{ row.description }}</div>
+                <div class="agent-desc">{{ row.description }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="96">
           <template #default="{ row }">
-            <el-tag :type="(AGENT_STATUS_COLORS[row.status] as any)" size="small">
+            <el-tag :type="(AGENT_STATUS_COLORS[row.status] as any)" size="small" round>
               {{ AGENT_STATUS_MAP[row.status] }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="modelName" label="模型" width="150" />
-        <el-table-column label="成功率" width="100">
-          <template #default="{ row }">{{ formatPercent(row.successRate) }}</template>
+        <el-table-column label="模型" width="160">
+          <template #default="{ row }">
+            <span class="num model-name">{{ row.modelName || '—' }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="totalSessions" label="会话数" width="80" />
-        <el-table-column label="更新时间" width="140">
+        <el-table-column label="成功率" width="100">
+          <template #default="{ row }">
+            <span class="num" :class="{ muted: row.successRate == null }">{{ formatPercent(row.successRate) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="会话数" width="90">
+          <template #default="{ row }"><span class="num">{{ row.totalSessions }}</span></template>
+        </el-table-column>
+        <el-table-column label="更新时间" width="130">
           <template #default="{ row }">{{ timeAgo(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
             <el-button text type="primary" size="small" @click="router.push(`/agents/${row.id}`)">配置</el-button>
             <el-button text type="primary" size="small" @click="goToChat(row.id)">对话</el-button>
@@ -130,16 +135,36 @@ function goToChat(id: number) {
 </template>
 
 <style scoped>
-.agent-list-page { max-width: 1400px; }
+.agent-list-page { max-width: 1400px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
 .agent-cell {
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
 }
-.agent-cell:hover .agent-name { color: var(--el-color-primary); }
-.agent-avatar { font-size: 24px; }
-.agent-name { font-weight: 500; font-size: 14px; }
-.agent-desc { font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-cell:hover .agent-name { color: var(--accent); }
+.agent-name { font-weight: 600; font-size: 13.5px; color: var(--text-1); }
+.agent-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.model-name { font-size: 12.5px; color: var(--text-2); }
+.muted { color: var(--text-3); font-weight: 500; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

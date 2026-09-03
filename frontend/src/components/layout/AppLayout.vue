@@ -8,7 +8,7 @@ const appStore = useAppStore()
 
 <template>
   <el-container class="app-layout">
-    <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="app-aside">
+    <el-aside :width="appStore.sidebarCollapsed ? '64px' : '244px'" class="app-aside">
       <SidebarMenu />
     </el-aside>
     <el-container>
@@ -31,22 +31,22 @@ const appStore = useAppStore()
   height: 100vh;
 }
 .app-aside {
-  background-color: var(--el-menu-bg-color);
-  border-right: 1px solid var(--el-border-color-light);
-  transition: width 0.3s;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-1);
+  transition: width 0.25s ease-out;
   overflow: hidden;
 }
 .app-header {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--el-border-color-light);
-  background: #fff;
+  border-bottom: 1px solid var(--border-1);
+  background: var(--bg-surface);
   padding: 0 16px;
   height: 56px;
 }
 .app-main {
-  background-color: var(--el-bg-color-page);
-  padding: 20px;
+  background: var(--bg-page);
+  padding: 24px 32px;
   overflow-y: auto;
 }
 .fade-enter-active,

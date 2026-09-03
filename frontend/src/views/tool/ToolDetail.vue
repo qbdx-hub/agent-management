@@ -92,8 +92,7 @@ async function runTest() { if (!tool.value) return
 </script>
 
 <template>
-  <div v-loading="loading" style="min-height: 300px">
-  <div class="tool-detail-page" v-if="tool">
+  <div class="tool-detail-page" v-if="tool" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:12px">
         <ToolIcon :icon="tool.icon" :size="32" />
@@ -109,8 +108,8 @@ async function runTest() { if (!tool.value) return
       </div>
     </div>
 
-    <el-card>
-      <el-tabs v-model="activeTab">
+    <!-- 标签页直接落在页面上，不再包一层卡片 -->
+    <el-tabs v-model="activeTab" class="tool-tabs">
         <el-tab-pane label="信息" name="info">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="名称">{{ tool.displayName }}</el-descriptions-item>
@@ -168,10 +167,10 @@ async function runTest() { if (!tool.value) return
 
         <el-tab-pane label="统计" name="stats">
           <div v-if="stats" class="stats-row">
-            <el-card shadow="hover"><div class="stat-val">{{ stats.totalCalls }}</div><div class="stat-lbl">总调用</div></el-card>
-            <el-card shadow="hover"><div class="stat-val">{{ formatPercent(stats.successRate) }}</div><div class="stat-lbl">成功率</div></el-card>
-            <el-card shadow="hover"><div class="stat-val">{{ formatLatency(stats.avgLatencyMs) }}</div><div class="stat-lbl">平均延迟</div></el-card>
-            <el-card shadow="hover"><div class="stat-val">{{ formatLatency(stats.p99LatencyMs) }}</div><div class="stat-lbl">P99 延迟</div></el-card>
+            <div class="stat-tile"><div class="stat-val num">{{ stats.totalCalls }}</div><div class="stat-lbl">总调用</div></div>
+            <div class="stat-tile"><div class="stat-val num" :class="{ muted: stats.successRate == null }">{{ formatPercent(stats.successRate) }}</div><div class="stat-lbl">成功率</div></div>
+            <div class="stat-tile"><div class="stat-val num">{{ formatLatency(stats.avgLatencyMs) }}</div><div class="stat-lbl">平均延迟</div></div>
+            <div class="stat-tile"><div class="stat-val num">{{ formatLatency(stats.p99LatencyMs) }}</div><div class="stat-lbl">P99 延迟</div></div>
           </div>
           <h4 style="margin:16px 0 12px">绑定的 Agent</h4>
           <el-table v-if="stats" :data="stats.topAgents" border size="small">
@@ -186,19 +185,22 @@ async function runTest() { if (!tool.value) return
             <el-table-column label="时间" width="160"><template #default="{ row }">{{ formatDateTime(row.time) }}</template></el-table-column>
             <el-table-column label="参数"><template #default="{ row }"><code>{{ JSON.stringify(row.params) }}</code></template></el-table-column>
             <el-table-column prop="resultSummary" label="结果" width="150" />
-            <el-table-column label="状态" width="80"><template #default="{ row }"><el-tag :type="row.success ? 'success' : 'danger'" size="small">{{ row.success ? '成功' : '失败' }}</el-tag></template></el-table-column>
-            <el-table-column label="延迟" width="80"><template #default="{ row }">{{ formatLatency(row.latencyMs) }}</template></el-table-column>
+            <el-table-column label="状态" width="80"><template #default="{ row }"><el-tag :type="row.success ? 'success' : 'danger'" size="small" round>{{ row.success ? '成功' : '失败' }}</el-tag></template></el-table-column>
+            <el-table-column label="延迟" width="80"><template #default="{ row }"><span class="num">{{ formatLatency(row.latencyMs) }}</span></template></el-table-column>
           </el-table>
         </el-tab-pane>
       </el-tabs>
-    </el-card>
-  </div>
   </div>
 </template>
 
 <style scoped>
-.tool-detail-page { max-width: 1200px; }
-.response-block { background: #f5f7fa; padding: 12px; border-radius: 6px; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-.stat-val { font-size: 28px; font-weight: 700; color: var(--el-color-primary); text-align: center; }
-.stat-lbl { text-align: center; color: #909399; font-size: 13px; margin-top: 4px; }
+.tool-detail-page { max-width: 1200px; margin: 0 auto; }
+.tool-tabs { margin-top: 8px; }
+.response-block { background: var(--bg-hover); padding: 12px; border-radius: 8px; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+/* 统计指标：平铺在页面上，不再卡片套卡片 */
+.stats-row { margin-bottom: 20px; }
+.stat-tile { text-align: center; padding: 18px 0; }
+.stat-val { font-size: 26px; font-weight: 800; color: var(--text-1); text-align: center; font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.2px; }
+.stat-lbl { text-align: center; color: var(--text-3); font-size: 13px; margin-top: 4px; }
+.muted { color: var(--text-3); }
 </style>

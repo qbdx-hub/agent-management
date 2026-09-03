@@ -79,18 +79,18 @@ onMounted(loadRules)
   <div class="alert-config-page" v-loading="loading">
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <el-button text @click="router.push('/monitor')"><el-icon><ArrowLeft /></el-icon></el-button>
+        <el-button text @click="router.push('/monitor')"><UiIcon name="arrow-left" /></el-button>
         <h2>告警配置</h2>
       </div>
-      <el-button type="primary" @click="showCreate = true"><el-icon><Plus /></el-icon> 添加规则</el-button>
+      <el-button type="primary" @click="showCreate = true"><UiIcon name="plus" /> 添加规则</el-button>
     </div>
-    <el-card>
+    <el-card shadow="never" class="table-card">
       <el-table :data="rules">
         <el-table-column prop="name" label="规则名称" />
         <el-table-column prop="metric" label="指标" width="120" />
-        <el-table-column label="条件" width="150"><template #default="{ row }">{{ row.condition }} {{ row.threshold }}</template></el-table-column>
-        <el-table-column label="严重度" width="80"><template #default="{ row }"><el-tag :type="row.severity === 'critical' ? 'danger' : row.severity === 'warning' ? 'warning' : 'info'" size="small">{{ ALERT_SEVERITY_MAP[row.severity] }}</el-tag></template></el-table-column>
-        <el-table-column label="通知" width="150"><template #default="{ row }"><el-tag v-for="ch in row.notifyChannels" :key="ch" size="small" style="margin-right:4px">{{ NOTIFY_CHANNEL_MAP[ch] || ch }}</el-tag></template></el-table-column>
+        <el-table-column label="条件" width="150"><template #default="{ row }"><span class="num">{{ row.condition }} {{ row.threshold }}</span></template></el-table-column>
+        <el-table-column label="严重度" width="80"><template #default="{ row }"><el-tag :type="row.severity === 'critical' ? 'danger' : row.severity === 'warning' ? 'warning' : 'info'" size="small" round>{{ ALERT_SEVERITY_MAP[row.severity] }}</el-tag></template></el-table-column>
+        <el-table-column label="通知" width="150"><template #default="{ row }"><el-tag v-for="ch in row.notifyChannels" :key="ch" size="small" round style="margin-right:4px">{{ NOTIFY_CHANNEL_MAP[ch] || ch }}</el-tag></template></el-table-column>
         <el-table-column label="启用" width="70"><template #default="{ row }"><el-switch v-model="row.enabled" @change="handleToggle(row)" /></template></el-table-column>
         <el-table-column label="" width="70"><template #default="{ row }"><el-popconfirm title="确认删除该规则？" @confirm="handleDelete(row.id)"><template #reference><el-button text type="danger" size="small">删除</el-button></template></el-popconfirm></template></el-table-column>
       </el-table>
@@ -110,4 +110,12 @@ onMounted(loadRules)
   </div>
 </template>
 
-<style scoped>.alert-config-page { max-width: 1200px; }</style>
+<style scoped>
+.alert-config-page { max-width: 1200px; margin: 0 auto; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
+</style>

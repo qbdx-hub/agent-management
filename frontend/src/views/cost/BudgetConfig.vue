@@ -139,23 +139,23 @@ onMounted(loadBudgets)
     <div class="page-header">
       <div style="display:flex;align-items:center;gap:8px">
         <el-button text @click="router.push('/cost')">
-          <el-icon><ArrowLeft /></el-icon>
+          <UiIcon name="arrow-left" />
         </el-button>
         <h2>预算配置</h2>
       </div>
       <el-button type="primary" @click="showCreate = true">
-        <el-icon><Plus /></el-icon> 添加预算
+        <UiIcon name="plus" /> 添加预算
       </el-button>
     </div>
 
     <!-- 预算列表 -->
-    <el-card>
+    <el-card shadow="never" class="table-card">
       <el-table :data="budgets" v-loading="loading" stripe empty-text="暂无预算配置">
         <el-table-column prop="name" label="名称" min-width="140" />
 
         <el-table-column label="范围" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.scope === 'global' ? '' : row.scope === 'agent' ? 'warning' : 'info'">
+            <el-tag size="small" round :type="row.scope === 'global' ? '' : row.scope === 'agent' ? 'warning' : 'info'">
               {{ SCOPE_LABEL[row.scope as BudgetScope] || row.scope }}
             </el-tag>
           </template>
@@ -169,25 +169,25 @@ onMounted(loadBudgets)
 
         <el-table-column label="限额" width="110" align="right">
           <template #default="{ row }">
-            <span style="font-weight:600">{{ formatCost(row.limit) }}</span>
+            <span class="num" style="font-weight:600">{{ formatCost(row.limit) }}</span>
           </template>
         </el-table-column>
 
         <el-table-column label="已用" width="110" align="right">
           <template #default="{ row }">
-            <span style="color:#e6a23c">{{ formatCost(row.currentAmount ?? 0) }}</span>
+            <span class="num" style="color:var(--warning)">{{ formatCost(row.currentAmount ?? 0) }}</span>
           </template>
         </el-table-column>
 
         <el-table-column label="告警阈值" width="80" align="center">
           <template #default="{ row }">
-            {{ row.warnPercent }}%
+            <span class="num">{{ row.warnPercent }}%</span>
           </template>
         </el-table-column>
 
         <el-table-column label="熔断" width="70" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.meltdownEnabled ? 'danger' : 'info'" size="small">
+            <el-tag :type="row.meltdownEnabled ? 'danger' : 'info'" size="small" round>
               {{ row.meltdownEnabled ? '启用' : '禁用' }}
             </el-tag>
           </template>
@@ -290,6 +290,7 @@ onMounted(loadBudgets)
 <style scoped>
 .budget-config-page {
   max-width: 1200px;
+  margin: 0 auto;
 }
 .page-header {
   display: flex;
@@ -297,4 +298,10 @@ onMounted(loadBudgets)
   align-items: center;
   margin-bottom: 20px;
 }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.table-card :deep(.el-card__body) { padding: 20px; }
 </style>
