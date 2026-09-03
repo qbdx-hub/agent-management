@@ -54,6 +54,7 @@ const categories = computed(() => {
             <div class="tool-name">{{ tool.displayName }}</div>
             <el-tag size="small" type="info">{{ tool.categoryLabel }}</el-tag>
             <el-tag v-if="tool.type === 'mcp'" size="small" type="warning" style="margin-left:4px">MCP</el-tag>
+            <el-tag v-if="tool.type === 'builtin'" size="small" type="success" style="margin-left:4px">内置</el-tag>
           </div>
         </div>
         <div class="tool-desc text-muted">{{ tool.description }}</div>

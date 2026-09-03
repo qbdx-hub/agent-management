@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agent'
-import { mockModelProviders } from '@/mock/agents'
+import { getModelCatalog, groupModelsByProvider } from '@/api/model'
+import type { ModelProviderGroup } from '@/types/model'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -17,10 +18,22 @@ const form = reactive({
 
 const tagInput = ref('')
 const avatarOptions = ['23-ai-robot', '07-lightbulb', '02-rocket', '24-trophy', '25-medal', '16-tea', '21-moon', '27-gift', '26-guitar', '19-camera', '03-bell', '14-globe']
-const selectedProvider = ref(mockModelProviders[0])
+
+// 模型目录：来自后端 model_pricing 表（GET /models）
+const providers = ref<ModelProviderGroup[]>([])
+const selectedProvider = ref<ModelProviderGroup | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await getModelCatalog()
+    if (res.code === 0) providers.value = groupModelsByProvider(res.data || [])
+  } catch {
+    // 错误已由 axios 响应拦截器统一提示
+  }
+})
 
 function handleProviderChange(val: string) {
-  selectedProvider.value = mockModelProviders.find(p => p.key === val) || mockModelProviders[0]
+  selectedProvider.value = providers.value.find(p => p.key === val) || null
   form.modelName = ''
 }
 
@@ -74,8 +87,8 @@ async function handleFinish() {
 
       <div v-show="currentStep === 1">
         <el-form label-width="100px" style="max-width:600px">
-          <el-form-item label="供应商"><el-select v-model="form.modelProvider" placeholder="选择供应商" @change="handleProviderChange"><el-option v-for="p in mockModelProviders" :key="p.key" :label="p.name" :value="p.key" /></el-select></el-form-item>
-          <el-form-item label="模型"><el-select v-model="form.modelName" placeholder="选择模型"><el-option v-for="m in selectedProvider.models" :key="m.name" :label="m.displayName" :value="m.name" /></el-select></el-form-item>
+          <el-form-item label="供应商"><el-select v-model="form.modelProvider" placeholder="选择供应商" @change="handleProviderChange"><el-option v-for="p in providers" :key="p.key" :label="p.name" :value="p.key" /></el-select></el-form-item>
+          <el-form-item label="模型"><el-select v-model="form.modelName" placeholder="选择模型"><el-option v-for="m in selectedProvider?.models || []" :key="m.modelName" :label="m.displayName || m.modelName" :value="m.modelName" /></el-select></el-form-item>
           <el-form-item label="Temperature"><el-slider v-model="form.temperature" :min="0" :max="2" :step="0.1" show-input /></el-form-item>
           <el-form-item label="Max Tokens"><el-input-number v-model="form.maxTokens" :min="256" :max="128000" :step="256" /></el-form-item>
         </el-form>
@@ -87,7 +100,7 @@ async function handleFinish() {
           <el-descriptions-item label="名称">{{ form.name }}</el-descriptions-item>
           <el-descriptions-item label="描述">{{ form.description || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="标签"><el-tag v-for="tag in form.tags" :key="tag" style="margin-right:4px">{{ tag }}</el-tag><span v-if="!form.tags.length" class="text-muted">无</span></el-descriptions-item>
-          <el-descriptions-item label="模型">{{ selectedProvider.name }} / {{ form.modelName }}</el-descriptions-item>
+          <el-descriptions-item label="模型">{{ selectedProvider?.name || form.modelProvider }} / {{ form.modelName }}</el-descriptions-item>
           <el-descriptions-item label="Temperature">{{ form.temperature }}</el-descriptions-item>
           <el-descriptions-item label="Max Tokens">{{ form.maxTokens }}</el-descriptions-item>
         </el-descriptions>

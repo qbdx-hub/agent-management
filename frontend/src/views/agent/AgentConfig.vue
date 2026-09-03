@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAgentStore } from '@/stores/agent'
-import { mockModelProviders } from '@/mock/agents'
+import { getModelCatalog, groupModelsByProvider, PROVIDER_META } from '@/api/model'
+import type { ModelProviderGroup } from '@/types/model'
 import { ElMessage } from 'element-plus'
 
 const agentStore = useAgentStore()
@@ -15,9 +16,19 @@ const form = ref({
   inputPricePerMillion: 0.14, cachedInputPricePerMillion: 0.014, outputPricePerMillion: 0.28,
 })
 
-const selectedProvider = ref(mockModelProviders[0])
+// 模型目录：来自后端 model_pricing 表（GET /models）
+const providers = ref<ModelProviderGroup[]>([])
+const selectedProvider = ref<ModelProviderGroup | null>(null)
 
-onMounted(() => { initForm() })
+onMounted(async () => {
+  try {
+    const res = await getModelCatalog()
+    if (res.code === 0) providers.value = groupModelsByProvider(res.data || [])
+  } catch {
+    // 错误已由 axios 响应拦截器统一提示
+  }
+  initForm()
+})
 watch(agent, () => { initForm() }, { deep: true })
 
 function initForm() {
@@ -34,13 +45,26 @@ function initForm() {
     cachedInputPricePerMillion: agent.value.cachedInputPricePerMillion ?? 0.014,
     outputPricePerMillion: agent.value.outputPricePerMillion ?? 0.28,
   }
-  selectedProvider.value = mockModelProviders.find(p => p.key === cfg.modelProvider) || mockModelProviders[0]
+  selectedProvider.value = providers.value.find(p => p.key === cfg.modelProvider) || null
 }
 
 function handleProviderChange(val: string) {
-  selectedProvider.value = mockModelProviders.find(p => p.key === val) || mockModelProviders[0]
+  selectedProvider.value = providers.value.find(p => p.key === val) || null
   form.value.modelName = ''
+  // 自动回填该供应商的 OpenAI 兼容地址（可手动修改）
+  const baseUrl = PROVIDER_META[val]?.baseUrl
+  if (baseUrl && !form.value.aiBaseUrl) form.value.aiBaseUrl = baseUrl
 }
+
+// 选中目录中的模型时：同步 aiModel 并回填官方单价（美元/百万 = 每1K价 × 1000）
+function handleModelChange(val: string) {
+  form.value.aiModel = val
+  const model = selectedProvider.value?.models.find(m => m.modelName === val)
+  if (model?.inputPricePer1k != null) form.value.inputPricePerMillion = round4(model.inputPricePer1k * 1000)
+  if (model?.outputPricePer1k != null) form.value.outputPricePerMillion = round4(model.outputPricePer1k * 1000)
+}
+
+function round4(n: number) { return Math.round(n * 10000) / 10000 }
 
 async function handleSave() {
   loading.value = true
@@ -85,7 +109,7 @@ async function handleSave() {
         <div class="form-tip">留空表示不修改已保存的 Key</div>
       </el-form-item>
       <el-form-item label="模型名称">
-        <el-input v-model="form.aiModel" placeholder="gpt-4o / deepseek-chat / ..." />
+        <el-input v-model="form.aiModel" placeholder="gpt-4o / deepseek-v4-flash / ..." />
       </el-form-item>
 
       <el-divider content-position="left">Token 价格（美元 / 百万 token）</el-divider>
@@ -114,13 +138,13 @@ async function handleSave() {
 
       <el-divider content-position="left">模型参数</el-divider>
       <el-form-item label="供应商">
-        <el-select v-model="form.modelProvider" @change="handleProviderChange">
-          <el-option v-for="p in mockModelProviders" :key="p.key" :label="p.name" :value="p.key" />
+        <el-select v-model="form.modelProvider" placeholder="选择供应商" @change="handleProviderChange">
+          <el-option v-for="p in providers" :key="p.key" :label="p.name" :value="p.key" />
         </el-select>
       </el-form-item>
       <el-form-item label="模型">
-        <el-select v-model="form.modelName">
-          <el-option v-for="m in selectedProvider.models" :key="m.name" :label="m.displayName" :value="m.name" />
+        <el-select v-model="form.modelName" placeholder="选择模型" @change="handleModelChange">
+          <el-option v-for="m in selectedProvider?.models || []" :key="m.modelName" :label="m.displayName || m.modelName" :value="m.modelName" />
         </el-select>
       </el-form-item>
       <el-form-item label="Temperature"><el-slider v-model="form.temperature" :min="0" :max="2" :step="0.1" show-input style="width:400px" /></el-form-item>

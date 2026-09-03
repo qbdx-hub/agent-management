@@ -132,6 +132,7 @@ npm run dev
 
 ## 最近更新
 
+- **2026-09-03**: 对话引擎假配置接真（阶段0）+ 上下文经济学（阶段2）：`maxIterations` 语义修正为真实工具轮上限（不再封顶 5，叠加 10 万 token 循环预算双保险防失控）、`reflectionEnabled/reflectionDepth` 接线为工具失败后的反思重试提示注入、`promptVariables` 的 `{{key}}` 在 system prompt 中替换为变量值（取值 value→content→defaultValue）、`outputSchema` 以 JSON Schema 输出约束注入 system prompt；历史消息改为按 token 预算（估算 2.4 万）从最新往前保留，被挤出的旧消息由 LLM 压缩成「前情提要」并落库 `session.context_summary/summarized_message_id`（V10 迁移）跨轮复用、避免重复压缩，压缩 token 计入消息费用；多轮循环中早期工具结果自动精简（保留最近 2 条全量）。已 E2E 验证：暗号跨 23 条历史命中、edit_file 失败后反思恢复、Schema 严格 JSON 输出、变量替换生效
 - **2026-09-03**: Agent 执行面升级为真实作用型（对标 Claude Code 类 harness 的工具面）：新增 8 个内置工具（builtin 类型，V9 迁移种子）——read_file/write_file/edit_file/list_files(glob)/search_files(grep)/run_command/web_search(必应)/web_fetch；执行于会话级沙箱（`agent.sandbox.root/session-{sessionId}`），路径越界拒绝、命令超时/输出上限、web_fetch 拒绝内网地址（SSRF 防护）；与 Function Calling 循环、SSE 步骤、tool_call_record 归因、市场统计完全打通；命令输出按系统字符集解码（中文 Windows cmd 为 GBK）
 - **2026-09-03**: 工具市场去除账户/工作空间隔离，所有账户可见、可绑定、可调用；预置 8 个免费免密钥常用 API 工具（天气查询、城市定位、汇率换算、文本翻译、世界时钟、短链接生成、GitHub 仓库搜索、每日一言，V8 迁移幂等种子）；修复 GET 工具查询串未 URL 编码导致中文/空格参数请求损坏的问题
 - **2026-09-03**: 会话对话接入原生 Function Calling：Agent 绑定的 API 工具自动转为 OpenAI tools 定义随请求下发，模型发起 tool_calls 后真实执行 HTTP（计入 tool_call_record 并归因 agent/session），结果以 role=tool 回传继续生成，SSE 新增 tool_call 事件、前端执行步骤实时展示；多轮工具调用受 Agent 最大迭代数约束（封顶 5 轮）。修复仅提交工具绑定时 `updateAgent` 生成空 SET 语句被 Druid 拒绝导致绑定保存 500 的问题；修复工作流工具节点在异步线程取 SecurityContext 崩溃
