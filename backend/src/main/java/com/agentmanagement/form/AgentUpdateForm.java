@@ -2,6 +2,7 @@ package com.agentmanagement.form;
 
 import lombok.Data;
 
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
@@ -84,4 +85,19 @@ public class AgentUpdateForm {
     private Integer reflectionDepth;
 
     private Map<String, Object> outputSchema;
+
+    // ===== 工具绑定 =====
+
+    /** 工具绑定（前端全量提交所有工具 + enabled 标记）；null 表示本次不修改绑定 */
+    private List<ToolBindingItem> toolBindings;
+
+    @Data
+    public static class ToolBindingItem {
+
+        @NotNull(message = "toolId 不能为空")
+        private Long toolId;
+
+        /** 是否启用 */
+        private Boolean enabled;
+    }
 }

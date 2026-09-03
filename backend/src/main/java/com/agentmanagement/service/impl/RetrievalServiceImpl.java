@@ -6,6 +6,7 @@ import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.mapper.AgentMapper;
 import com.agentmanagement.mapper.DocumentChunkMapper;
 import com.agentmanagement.mapper.KnowledgeBaseMapper;
+import com.agentmanagement.security.UserRoleChecker;
 import com.agentmanagement.service.AiService;
 import com.agentmanagement.service.RetrievalService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -39,13 +40,23 @@ public class RetrievalServiceImpl implements RetrievalService {
     @Autowired
     private AiService aiService;
 
+    @Autowired
+    private UserRoleChecker userRoleChecker;
+
     @Override
-    public List<SearchResult> search(Long knowledgeBaseId, String query, int topK) {
+    public List<SearchResult> search(Long knowledgeBaseId, String query, int topK, Long userId, Long workspaceId) {
         log.info("RetrievalService.search 开始: kbId={}, query={}", knowledgeBaseId, query);
         // 1. 获取 AI 配置（从绑定到该知识库的 Agent 获取）
         KnowledgeBase kb = knowledgeBaseMapper.selectById(knowledgeBaseId);
         if (kb == null) {
             log.warn("知识库不存在: {}", knowledgeBaseId);
+            return Collections.emptyList();
+        }
+
+        // 账户隔离校验：admin 可检索工作空间全部，普通用户仅本人创建/历史 NULL，且须属于当前工作空间
+        if (!hasAccess(kb, userId, workspaceId)) {
+            log.warn("拒绝跨账户知识检索: kbId={}, kbCreatedBy={}, userId={}",
+                    knowledgeBaseId, kb.getCreatedBy(), userId);
             return Collections.emptyList();
         }
         log.info("知识库存在: name={}", kb.getName());
@@ -186,6 +197,19 @@ public class RetrievalServiceImpl implements RetrievalService {
             arr[i] = list.get(i);
         }
         return arr;
+    }
+
+    /** 知识库对当前用户是否可见：须属于当前工作空间，admin 全部可见，普通用户仅本人创建或历史 NULL */
+    private boolean hasAccess(KnowledgeBase kb, Long userId, Long workspaceId) {
+        if (kb.getWorkspaceId() == null || workspaceId == null
+                || !kb.getWorkspaceId().equals(workspaceId)) {
+            return false;
+        }
+        if (userRoleChecker.isAdmin(userId)) {
+            return true;
+        }
+        Long createdBy = kb.getCreatedBy();
+        return createdBy == null || createdBy.equals(userId);
     }
 
     private List<Agent> findAgentsWithKnowledgeBase(Long knowledgeBaseId) {

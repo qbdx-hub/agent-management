@@ -57,7 +57,11 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
         List<Budget> budgets = budgetMapper.selectList(qw);
         List<BudgetVO> result = new ArrayList<BudgetVO>();
         for (Budget b : budgets) {
-            result.add(toVO(b));
+            BudgetVO vo = toVO(b);
+            // 已用金额按 scope×period 从 cost_record 实时计算（日/月周期自动重置；
+            // current_amount 列由调用扣减维护，仅为冗余缓存，展示以其为准会跨周期失真）
+            vo.setCurrentAmount(computeUsage(b));
+            result.add(vo);
         }
         return result;
     }
@@ -145,20 +149,39 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
             }
         }
 
-        // 预算
-        LambdaQueryWrapper<Budget> budgetQw = new LambdaQueryWrapper<Budget>();
-        budgetQw.eq(Budget::getWorkspaceId, workspaceId);
-        budgetQw.eq(Budget::getScope, "global");
-        budgetQw.eq(Budget::getEnabled, 1);
-        budgetQw.eq(Budget::getPeriod, "monthly");
-        budgetQw.last("LIMIT 1");
-        Budget budget = budgetMapper.selectOne(budgetQw);
+        // 预算：优先取当前用户的 user 级月度预算，其次工作空间 global 级；未配置时返回 null，不编造默认额度
+        Budget budget = budgetMapper.selectOne(new LambdaQueryWrapper<Budget>()
+                .eq(Budget::getWorkspaceId, workspaceId)
+                .eq(Budget::getScope, "user")
+                .eq(Budget::getScopeId, userId)
+                .eq(Budget::getEnabled, 1)
+                .eq(Budget::getPeriod, "monthly")
+                .orderByDesc(Budget::getUpdatedAt)
+                .last("LIMIT 1"));
+        if (budget == null) {
+            budget = budgetMapper.selectOne(new LambdaQueryWrapper<Budget>()
+                    .eq(Budget::getWorkspaceId, workspaceId)
+                    .eq(Budget::getScope, "global")
+                    .eq(Budget::getEnabled, 1)
+                    .eq(Budget::getPeriod, "monthly")
+                    .orderByDesc(Budget::getUpdatedAt)
+                    .last("LIMIT 1"));
+        }
 
-        BigDecimal budgetLimit = budget != null ? budget.getLimitAmount() : new BigDecimal("2000");
-        BigDecimal budgetRemaining = budgetLimit.subtract(totalCost);
+        // 口径一致：user 级预算对比本人本月费用（totalCost 已按当前用户过滤），
+        // global 级预算对比全工作空间本月费用
+        BigDecimal monthCostForBudget;
+        if (budget == null || "user".equals(budget.getScope())) {
+            monthCostForBudget = totalCost;
+        } else {
+            monthCostForBudget = sumCost(workspaceId, null, rangeStart, rangeEnd);
+        }
+
+        BigDecimal budgetLimit = budget != null ? budget.getLimitAmount() : null;
+        BigDecimal budgetRemaining = budgetLimit != null ? budgetLimit.subtract(monthCostForBudget) : null;
         BigDecimal budgetPercent = BigDecimal.ZERO;
-        if (budgetLimit.compareTo(BigDecimal.ZERO) > 0) {
-            budgetPercent = totalCost.multiply(new BigDecimal("100"))
+        if (budgetLimit != null && budgetLimit.compareTo(BigDecimal.ZERO) > 0) {
+            budgetPercent = monthCostForBudget.multiply(new BigDecimal("100"))
                     .divide(budgetLimit, 1, RoundingMode.HALF_UP);
         }
 
@@ -332,6 +355,79 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, Budget> impleme
             voList.add(vo);
         }
         return PageResult.of(result, voList);
+    }
+
+    // ==================== 预算检查与扣减 ====================
+
+    @Override
+    public void assertBudgetAllowed(Long workspaceId, Long userId, Long agentId) {
+        for (Budget budget : matchBudgets(workspaceId, userId, agentId)) {
+            // 仅启用熔断的预算会阻断调用；未启用熔断的超支只做展示与告警
+            if (budget.getMeltdownEnabled() == null || budget.getMeltdownEnabled() == 0
+                    || budget.getLimitAmount() == null) {
+                continue;
+            }
+            BigDecimal used = computeUsage(budget);
+            if (used.compareTo(budget.getLimitAmount()) >= 0) {
+                throw new BusinessException(ResultCode.BUDGET_EXCEEDED,
+                        "预算「" + budget.getName() + "」已用 $" + used.toPlainString()
+                                + " / 限额 $" + budget.getLimitAmount().toPlainString()
+                                + "，AI 调用已熔断。请提高限额、等待周期重置或关闭熔断。");
+            }
+        }
+    }
+
+    @Override
+    public void deductAfterCall(Long workspaceId, Long userId, Long agentId, BigDecimal cost) {
+        for (Budget budget : matchBudgets(workspaceId, userId, agentId)) {
+            // cost 为 BigDecimal 纯数字字符串，拼接无注入风险（MP 3.5.3.1 setSql 无参数版）
+            budgetMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Budget>()
+                    .eq(Budget::getId, budget.getId())
+                    .setSql("current_amount = IFNULL(current_amount, 0) + " + cost.toPlainString())
+                    .set(Budget::getUpdatedAt, LocalDateTime.now()));
+        }
+    }
+
+    /** 匹配对本次调用生效的启用预算：global 全部生效；user/agent 按调用方与 Agent 匹配 */
+    private List<Budget> matchBudgets(Long workspaceId, Long userId, Long agentId) {
+        return budgetMapper.selectList(new LambdaQueryWrapper<Budget>()
+                .eq(Budget::getWorkspaceId, workspaceId)
+                .eq(Budget::getEnabled, 1)
+                .and(w -> w.eq(Budget::getScope, "global")
+                        .or(o -> o.eq(Budget::getScope, "user").eq(Budget::getScopeId, userId))
+                        .or(agentId != null,
+                                o -> o.eq(Budget::getScope, "agent").eq(Budget::getScopeId, agentId))));
+    }
+
+    /** 按 scope×period 从 cost_record 计算周期内真实已用金额（daily 从今日 0 点、monthly 从本月 1 日） */
+    private BigDecimal computeUsage(Budget budget) {
+        LocalDateTime start = "daily".equals(budget.getPeriod())
+                ? LocalDate.now().atStartOfDay()
+                : LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        return sumCost(budget.getWorkspaceId(), budget, start, LocalDateTime.now());
+    }
+
+    /**
+     * 汇总时间窗内的费用。budget 传 null 时按全工作空间汇总；
+     * 传 budget 时按其 scope 过滤（global=全工作空间、user/agent=对应维度）。
+     */
+    private BigDecimal sumCost(Long workspaceId, Budget budget, LocalDateTime start, LocalDateTime end) {
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<CostRecord> qw =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<CostRecord>()
+                        .eq("workspace_id", workspaceId)
+                        .ge("recorded_at", start)
+                        .le("recorded_at", end)
+                        .select("IFNULL(SUM(cost), 0) as total_cost");
+        if (budget != null && "user".equals(budget.getScope())) {
+            qw.eq("user_id", budget.getScopeId());
+        } else if (budget != null && "agent".equals(budget.getScope())) {
+            qw.eq("agent_id", budget.getScopeId());
+        }
+        List<Map<String, Object>> rows = costRecordMapper.selectMaps(qw);
+        if (!rows.isEmpty() && rows.get(0).get("total_cost") instanceof Number) {
+            return new BigDecimal(rows.get(0).get("total_cost").toString());
+        }
+        return BigDecimal.ZERO;
     }
 
     // ==================== 私有辅助 ====================

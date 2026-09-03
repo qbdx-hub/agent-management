@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -39,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -58,6 +61,9 @@ public class AuthServiceImpl implements AuthService {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtUtils jwtUtils;
+
+    /** 偏好 JSON 序列化/反序列化（无特殊配置需求，直接实例） */
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** role.name → 优先级（值越小优先级越高），不依赖 role.id 排序 */
     private static final Map<String, Integer> ROLE_PRIORITY = new HashMap<String, Integer>();
@@ -330,6 +336,60 @@ public class AuthServiceImpl implements AuthService {
         }
         update.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(update);
+    }
+
+    @Override
+    public Map<String, Object> getPreferences(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null || !StringUtils.hasText(user.getPreferences())) {
+            return defaultPreferences();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = objectMapper.readValue(user.getPreferences(), Map.class);
+            return result;
+        } catch (Exception e) {
+            // 偏好 JSON 损坏时回退默认值，不阻塞登录使用
+            log.warn("用户偏好 JSON 解析失败，回退默认值: userId={}", userId, e);
+            return defaultPreferences();
+        }
+    }
+
+    @Override
+    public void updatePreferences(Long userId, Map<String, Object> preferences) {
+        User update = new User();
+        update.setId(userId);
+        try {
+            update.setPreferences(objectMapper.writeValueAsString(
+                    preferences == null ? defaultPreferences() : preferences));
+        } catch (Exception e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "偏好格式错误");
+        }
+        update.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(update);
+    }
+
+    /** 移动端约定的默认偏好（见《移动端接口文档》§1.5） */
+    private Map<String, Object> defaultPreferences() {
+        Map<String, Object> notifications = new HashMap<>();
+        notifications.put("agentFinished", true);
+        notifications.put("taskFailed", true);
+        notifications.put("instanceAlert", true);
+        notifications.put("tokenUsage80", false);
+        Map<String, Object> quietHours = new HashMap<>();
+        quietHours.put("enabled", true);
+        quietHours.put("from", "23:00");
+        quietHours.put("to", "08:00");
+        notifications.put("quietHours", quietHours);
+        notifications.put("channels", new ArrayList<>(Arrays.asList("app", "email")));
+
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("defaultModel", "deepseek-chat"); // model_pricing 表中真实接入的模型
+        prefs.put("temperature", 0.7);
+        prefs.put("maxTokens", 4096);
+        prefs.put("replyStyle", "均衡");
+        prefs.put("notifications", notifications);
+        return prefs;
     }
 
     /** 格式化为 ISO 8601 带时区：2026-07-21T10:30:00+08:00（前端 new Date() 可解析） */

@@ -34,6 +34,9 @@ public class User implements Serializable {
     /** 状态：0-禁用 1-启用 */
     private Integer status;
 
+    /** 用户偏好 JSON 字符串（默认模型/温度/通知开关等，结构由前端约定；NULL 时服务端返回默认值） */
+    private String preferences;
+
     private LocalDateTime lastLoginAt;
 
     private LocalDateTime createdAt;

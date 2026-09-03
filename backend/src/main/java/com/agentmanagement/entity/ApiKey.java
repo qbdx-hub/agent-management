@@ -1,23 +1,19 @@
 package com.agentmanagement.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * API Key 表实体（对应 api_key 表）。
- * 第三方模型/服务密钥的存储记录，仅存前缀与哈希，明文不入库。
- * scopes 为 JSON 列，用 JacksonTypeHandler；需 autoResultMap = true。
+ * API 密钥表实体（对应 api_key 表）。
+ * 只存 SHA-256 摘要与展示掩码，明文仅在创建响应中返回一次。
  */
 @Data
-@TableName(value = "api_key", autoResultMap = true)
+@TableName("api_key")
 public class ApiKey implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -25,34 +21,21 @@ public class ApiKey implements Serializable {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    private Long workspaceId;
-
-    /** 提供商：openai/anthropic/... */
-    private String provider;
+    /** 所属用户 ID */
+    private Long userId;
 
     private String name;
 
-    /** Key 前缀（用于显示） */
-    private String keyPrefix;
-
-    /** Key 哈希值 */
+    /** SHA-256 摘要（hex），用于校验，不可逆 */
     private String keyHash;
 
-    /** 是否默认 Key：0-否 1-是 */
-    private Integer isDefault;
+    /** 展示掩码，如 sk-my-****-****-8f2a */
+    private String mask;
 
-    /** 权限范围 JSON */
-    @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> scopes;
-
-    /** 状态：active/revoked */
+    /** 状态：active/disabled */
     private String status;
 
     private LocalDateTime lastUsedAt;
-
-    private LocalDateTime expiresAt;
-
-    private Long createdBy;
 
     private LocalDateTime createdAt;
 }

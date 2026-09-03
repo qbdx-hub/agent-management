@@ -2,7 +2,9 @@ package com.agentmanagement.common.aspect;
 
 import com.agentmanagement.common.Result;
 import com.agentmanagement.common.annotation.AuditLog;
+import com.agentmanagement.entity.ActivityLog;
 import com.agentmanagement.entity.User;
+import com.agentmanagement.mapper.ActivityLogMapper;
 import com.agentmanagement.mapper.UserMapper;
 import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.AuditLogService;
@@ -36,6 +38,9 @@ public class AuditLogAspect {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private ActivityLogMapper activityLogMapper;
 
     /** userId -> 显示名 缓存，避免每次审计都查库 */
     private final ConcurrentHashMap<Long, String> userNameCache = new ConcurrentHashMap<Long, String>();
@@ -75,6 +80,20 @@ public class AuditLogAspect {
                     auditLog.resourceType(), resourceId, resourceName,
                     detail, success ? "success" : "failure",
                     ip, userAgent);
+
+            // 同步写入工作空间活动流（空间「动态」页数据源）；审计已有 audit_log，活动流只记成功操作
+            if (workspaceId != null && success) {
+                ActivityLog activity = new ActivityLog();
+                activity.setWorkspaceId(workspaceId);
+                activity.setUserId(userId);
+                activity.setUserName(userName);
+                activity.setType(auditLog.action());
+                activity.setDescription(detail);
+                activity.setRelatedId(resourceId);
+                activity.setRelatedType(auditLog.resourceType());
+                activity.setCreatedAt(java.time.LocalDateTime.now());
+                activityLogMapper.insert(activity);
+            }
         } catch (Exception e) {
             // 审计失败绝不影响业务
             log.error("审计日志记录失败: action={}", auditLog.action(), e);

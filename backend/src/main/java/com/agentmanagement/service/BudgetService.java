@@ -37,4 +37,13 @@ public interface BudgetService extends IService<Budget> {
 
     /** 费用记录分页列表 */
     PageResult<CostRecordVO> getCostRecords(int page, int pageSize);
+
+    /**
+     * 调用前预算检查：命中启用熔断且已超支的预算时抛 BUDGET_EXCEEDED。
+     * 匹配范围：global 全部生效；user/agent 按本次调用方与 Agent 匹配。
+     */
+    void assertBudgetAllowed(Long workspaceId, Long userId, Long agentId);
+
+    /** 调用成功后扣减匹配预算的已用金额（current_amount 累加，展示层按 cost_record 实时计算） */
+    void deductAfterCall(Long workspaceId, Long userId, Long agentId, java.math.BigDecimal cost);
 }

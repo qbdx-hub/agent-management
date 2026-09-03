@@ -3,6 +3,7 @@ package com.agentmanagement.controller;
 import com.agentmanagement.common.Result;
 import com.agentmanagement.common.annotation.AuditLog;
 import com.agentmanagement.form.LoginForm;
+import com.agentmanagement.form.PreferencesForm;
 import com.agentmanagement.form.RegisterForm;
 import com.agentmanagement.form.UserProfileForm;
 import com.agentmanagement.service.AuthService;
@@ -13,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 
 /**
  * 认证接口（前缀 /api/v1 由 context-path 统一加）。
@@ -51,6 +53,21 @@ public class AuthController {
     public Result<Void> updateProfile(@Valid @RequestBody UserProfileForm form) {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         authService.updateProfile(userId, form);
+        return Result.success();
+    }
+
+    /** GET /api/v1/auth/preferences —— 读取当前用户偏好（未设置时返回默认结构） */
+    @GetMapping("/preferences")
+    public Result<Map<String, Object>> getPreferences() {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return Result.success(authService.getPreferences(userId));
+    }
+
+    /** PUT /api/v1/auth/preferences —— 全量覆盖保存当前用户偏好（JSON 透传） */
+    @PutMapping("/preferences")
+    public Result<Void> updatePreferences(@RequestBody PreferencesForm form) {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        authService.updatePreferences(userId, form.getPreferences());
         return Result.success();
     }
 }

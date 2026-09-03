@@ -3,11 +3,14 @@ package com.agentmanagement.service.impl;
 import com.agentmanagement.common.BusinessException;
 import com.agentmanagement.common.ResultCode;
 import com.agentmanagement.entity.Document;
+import com.agentmanagement.entity.DocumentChunk;
 import com.agentmanagement.entity.KnowledgeBase;
 import com.agentmanagement.form.KnowledgeBaseCreateForm;
+import com.agentmanagement.mapper.DocumentChunkMapper;
 import com.agentmanagement.mapper.DocumentMapper;
 import com.agentmanagement.mapper.KnowledgeBaseMapper;
 import com.agentmanagement.security.SecurityUtils;
+import com.agentmanagement.security.UserRoleChecker;
 import com.agentmanagement.service.KnowledgeBaseService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -31,6 +34,12 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
 
     @Autowired
     private DocumentMapper documentMapper;
+
+    @Autowired
+    private DocumentChunkMapper documentChunkMapper;
+
+    @Autowired
+    private UserRoleChecker userRoleChecker;
 
     /** 文件上传根目录 */
     @Value("${file.upload-dir:./uploads}")
@@ -71,23 +80,28 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
     @Override
     public List<KnowledgeBase> listByWorkspace(Long workspaceId) {
         Long userId = SecurityUtils.currentUserId();
-        return baseMapper.selectList(
-                new LambdaQueryWrapper<KnowledgeBase>()
-                        .eq(KnowledgeBase::getWorkspaceId, workspaceId)
-                        .and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
-                                .or().isNull(KnowledgeBase::getCreatedBy))
-                        .orderByDesc(KnowledgeBase::getUpdatedAt));
+        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<KnowledgeBase>()
+                .eq(KnowledgeBase::getWorkspaceId, workspaceId);
+        // admin 可见工作空间全部，普通用户仅见自己创建的（历史 NULL 数据对所有人可见）
+        if (!userRoleChecker.isAdmin(userId)) {
+            wrapper.and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
+                    .or().isNull(KnowledgeBase::getCreatedBy));
+        }
+        wrapper.orderByDesc(KnowledgeBase::getUpdatedAt);
+        return baseMapper.selectList(wrapper);
     }
 
     @Override
     public KnowledgeBase getByIdChecked(Long id, Long workspaceId) {
         Long userId = SecurityUtils.currentUserId();
-        KnowledgeBase kb = baseMapper.selectOne(
-                new LambdaQueryWrapper<KnowledgeBase>()
-                        .eq(KnowledgeBase::getId, id)
-                        .eq(KnowledgeBase::getWorkspaceId, workspaceId)
-                        .and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
-                                .or().isNull(KnowledgeBase::getCreatedBy)));
+        LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<KnowledgeBase>()
+                .eq(KnowledgeBase::getId, id)
+                .eq(KnowledgeBase::getWorkspaceId, workspaceId);
+        if (!userRoleChecker.isAdmin(userId)) {
+            wrapper.and(w -> w.eq(KnowledgeBase::getCreatedBy, userId)
+                    .or().isNull(KnowledgeBase::getCreatedBy));
+        }
+        KnowledgeBase kb = baseMapper.selectOne(wrapper);
         if (kb == null) {
             throw new BusinessException(ResultCode.KB_NOT_FOUND);
         }
@@ -114,6 +128,10 @@ public class KnowledgeBaseServiceImpl extends ServiceImpl<KnowledgeBaseMapper, K
             // 删除文档记录
             documentMapper.deleteById(doc.getId());
         }
+
+        // 级联删除该库全部检索分块（单文档删除已各自清理，这里兜底防历史孤儿）
+        documentChunkMapper.delete(new LambdaQueryWrapper<DocumentChunk>()
+                .eq(DocumentChunk::getKnowledgeBaseId, id));
 
         // 3. 删除知识库记录
         baseMapper.deleteById(id);

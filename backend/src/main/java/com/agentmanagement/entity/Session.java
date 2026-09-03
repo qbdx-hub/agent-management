@@ -42,6 +42,12 @@ public class Session implements Serializable {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> variables;
 
+    /** 压缩后的前情提要（上下文经济学：超预算的旧历史由 LLM 摘要替代，跨轮次复用） */
+    private String contextSummary;
+
+    /** 已被摘要覆盖的最后一条消息 ID（其之前的历史不再进入上下文） */
+    private Long summarizedMessageId;
+
     private Long totalTokens;
 
     /** 总费用（美元） */

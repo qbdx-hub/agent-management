@@ -43,6 +43,12 @@ public class MonitorServiceImpl implements MonitorService {
     @Autowired
     private ActivityLogMapper activityLogMapper;
 
+    @Autowired
+    private CostRecordMapper costRecordMapper;
+
+    @Autowired
+    private MessageMapper messageMapper;
+
     // ====== 概览 ======
 
     @Override
@@ -57,37 +63,36 @@ public class MonitorServiceImpl implements MonitorService {
                 .eq(Agent::getStatus, "published");
         vo.setActiveAgentCount(agentMapper.selectCount(agentWrapper).intValue());
 
-        // 执行中任务数（session status = active）
-        LambdaQueryWrapper<Session> activeWrapper = new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .eq(Session::getStatus, "active");
-        vo.setRunningTaskCount(sessionMapper.selectCount(activeWrapper).intValue());
+        // 执行中会话：session 对话结束仍保持 active，改按"近 15 分钟有新消息且状态 active"判定
+        List<Object> recentIds = messageMapper.selectObjs(new LambdaQueryWrapper<Message>()
+                .select(Message::getSessionId)
+                .ge(Message::getCreatedAt, LocalDateTime.now().minusMinutes(15)));
+        Set<Long> activeSessionIds = new HashSet<>();
+        for (Object o : recentIds) {
+            if (o instanceof Number) {
+                activeSessionIds.add(((Number) o).longValue());
+            }
+        }
+        long runningCount = activeSessionIds.isEmpty() ? 0
+                : sessionMapper.selectCount(new LambdaQueryWrapper<Session>()
+                        .eq(Session::getWorkspaceId, workspaceId)
+                        .eq(Session::getStatus, "active")
+                        .in(Session::getId, activeSessionIds));
+        vo.setRunningTaskCount((int) runningCount);
 
-        // 今日调用数
+        // 今日调用数与成功率：成功调用记 cost_record、失败调用记 error_log，两者相加即真实调用量
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LambdaQueryWrapper<Session> todayWrapper = new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, todayStart);
-        long todayCalls = sessionMapper.selectCount(todayWrapper);
+        long todaySuccess = costRecordMapper.selectCount(new LambdaQueryWrapper<CostRecord>()
+                .eq(CostRecord::getWorkspaceId, workspaceId)
+                .ge(CostRecord::getRecordedAt, todayStart));
+        long todayErrors = errorLogMapper.selectCount(new LambdaQueryWrapper<ErrorLog>()
+                .eq(ErrorLog::getWorkspaceId, workspaceId)
+                .ge(ErrorLog::getOccurredAt, todayStart));
+        long todayCalls = todaySuccess + todayErrors;
         vo.setTodayCallCount(todayCalls);
+        vo.setSuccessRate(todayCalls > 0 ? todaySuccess * 100.0 / todayCalls : null);
 
-        // 成功率：今日 session 中 completed / (completed + error)
-        LambdaQueryWrapper<Session> completedWrapper = new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, todayStart)
-                .eq(Session::getStatus, "completed");
-        long completedCount = sessionMapper.selectCount(completedWrapper);
-
-        LambdaQueryWrapper<Session> errorWrapper = new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, todayStart)
-                .eq(Session::getStatus, "error");
-        long errorCount = sessionMapper.selectCount(errorWrapper);
-
-        long finishedTotal = completedCount + errorCount;
-        vo.setSuccessRate(finishedTotal > 0 ? (double) completedCount / finishedTotal : 1.0);
-
-        // 平均延迟 & P99
+        // 平均延迟 & P99（session.latency 为每次 AI 回复的真实耗时）
         List<Session> todaySessions = sessionMapper.selectList(new LambdaQueryWrapper<Session>()
                 .eq(Session::getWorkspaceId, workspaceId)
                 .ge(Session::getCreatedAt, todayStart)
@@ -95,11 +100,8 @@ public class MonitorServiceImpl implements MonitorService {
                 .orderByDesc(Session::getLatency));
 
         if (!todaySessions.isEmpty()) {
-            long sumLatency = 0;
-            for (Session s : todaySessions) {
-                sumLatency += s.getLatency() != null ? s.getLatency() : 0;
-            }
-            vo.setAvgLatencyMs((int) (sumLatency / todaySessions.size()));
+            Double avg = avgLatency(workspaceId, null, todayStart, LocalDateTime.now());
+            vo.setAvgLatencyMs(avg != null ? (int) Math.round(avg) : 0);
             // P99：取第 99 百分位
             int p99Index = (int) Math.ceil(todaySessions.size() * 0.99) - 1;
             p99Index = Math.min(p99Index, todaySessions.size() - 1);
@@ -109,29 +111,39 @@ public class MonitorServiceImpl implements MonitorService {
             vo.setP99LatencyMs(0);
         }
 
-        // 今日总 Token
+        // 今日总 Token：从 cost_record 聚合真实用量
         long totalTokens = 0;
-        for (Session s : sessionMapper.selectList(new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, todayStart)
-                .isNotNull(Session::getTotalTokens))) {
-            totalTokens += s.getTotalTokens() != null ? s.getTotalTokens() : 0;
+        for (CostRecord cr : costRecordMapper.selectList(new LambdaQueryWrapper<CostRecord>()
+                .eq(CostRecord::getWorkspaceId, workspaceId)
+                .ge(CostRecord::getRecordedAt, todayStart)
+                .isNotNull(CostRecord::getTotalTokens))) {
+            totalTokens += cr.getTotalTokens() != null ? cr.getTotalTokens() : 0;
         }
         vo.setTotalTokensToday(totalTokens);
 
-        // 趋势：与昨天对比
+        // 趋势：与昨天对比（调用量的相对变化、成功率的绝对差、延迟的相对变化）
         LocalDateTime yesterdayStart = LocalDate.now().minusDays(1).atStartOfDay();
-        LocalDateTime yesterdayEnd = todayStart;
-        LambdaQueryWrapper<Session> yesterdayWrapper = new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, yesterdayStart)
-                .lt(Session::getCreatedAt, yesterdayEnd);
-        long yesterdayCalls = sessionMapper.selectCount(yesterdayWrapper);
+        long yesterdaySuccess = costRecordMapper.selectCount(new LambdaQueryWrapper<CostRecord>()
+                .eq(CostRecord::getWorkspaceId, workspaceId)
+                .ge(CostRecord::getRecordedAt, yesterdayStart)
+                .lt(CostRecord::getRecordedAt, todayStart));
+        long yesterdayErrors = errorLogMapper.selectCount(new LambdaQueryWrapper<ErrorLog>()
+                .eq(ErrorLog::getWorkspaceId, workspaceId)
+                .ge(ErrorLog::getOccurredAt, yesterdayStart)
+                .lt(ErrorLog::getOccurredAt, todayStart));
+        long yesterdayCalls = yesterdaySuccess + yesterdayErrors;
 
         MonitorOverviewVO.Trends trends = new MonitorOverviewVO.Trends();
         trends.setCallCountChange(yesterdayCalls > 0 ? (double) (todayCalls - yesterdayCalls) / yesterdayCalls : 0.0);
-        trends.setSuccessRateChange(0.0);  // 简化实现
-        trends.setLatencyChange(0.0);      // 简化实现
+        Double todayRate = vo.getSuccessRate();
+        Double yesterdayRate = yesterdayCalls > 0 ? yesterdaySuccess * 100.0 / yesterdayCalls : null;
+        trends.setSuccessRateChange(todayRate != null && yesterdayRate != null
+                ? todayRate - yesterdayRate : null);
+
+        Double todayAvgLatency = avgLatency(workspaceId, null, todayStart, LocalDateTime.now());
+        Double yesterdayAvgLatency = avgLatency(workspaceId, null, yesterdayStart, todayStart);
+        trends.setLatencyChange(todayAvgLatency != null && yesterdayAvgLatency != null && yesterdayAvgLatency > 0
+                ? (todayAvgLatency - yesterdayAvgLatency) / yesterdayAvgLatency : 0.0);
         vo.setTrends(trends);
 
         return vo;
@@ -157,17 +169,14 @@ public class MonitorServiceImpl implements MonitorService {
             points = 30;
         }
 
-        // 查询时间范围内的 sessions
-        List<Session> sessions = sessionMapper.selectList(new LambdaQueryWrapper<Session>()
-                .eq(Session::getWorkspaceId, workspaceId)
-                .ge(Session::getCreatedAt, startTime)
-                .isNotNull(Session::getTotalTokens));
+        // 查询时间范围内的真实调用记录（cost_record 含 input/output 分项与真实费用）
+        List<CostRecord> records = costRecordMapper.selectList(new LambdaQueryWrapper<CostRecord>()
+                .eq(CostRecord::getWorkspaceId, workspaceId)
+                .ge(CostRecord::getRecordedAt, startTime));
 
         // 按 hour / day 聚合
         List<TokenTrendPointVO> series;
-        DateTimeFormatter formatter;
         if ("hour".equals(granularity)) {
-            formatter = DateTimeFormatter.ofPattern("HH:mm");
             Map<Integer, Long> inputByHour = new LinkedHashMap<>();
             Map<Integer, Long> outputByHour = new LinkedHashMap<>();
             // 初始化 24 小时
@@ -175,12 +184,13 @@ public class MonitorServiceImpl implements MonitorService {
                 inputByHour.put(h, 0L);
                 outputByHour.put(h, 0L);
             }
-            for (Session s : sessions) {
-                int hour = s.getCreatedAt().getHour();
-                // 简化：input 占 70%，output 占 30%（实际应从 step 级别区分）
-                long total = s.getTotalTokens() != null ? s.getTotalTokens() : 0;
-                inputByHour.merge(hour, (long) (total * 0.7), Long::sum);
-                outputByHour.merge(hour, (long) (total * 0.3), Long::sum);
+            for (CostRecord r : records) {
+                if (r.getRecordedAt() == null) {
+                    continue;
+                }
+                int hour = r.getRecordedAt().getHour();
+                inputByHour.merge(hour, r.getTokenInput() != null ? r.getTokenInput() : 0L, Long::sum);
+                outputByHour.merge(hour, r.getTokenOutput() != null ? r.getTokenOutput() : 0L, Long::sum);
             }
             series = new ArrayList<>();
             for (int h = 0; h < 24; h++) {
@@ -191,14 +201,16 @@ public class MonitorServiceImpl implements MonitorService {
                 series.add(pt);
             }
         } else {
-            formatter = DateTimeFormatter.ofPattern("MM-dd");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
             Map<LocalDate, Long> inputByDay = new LinkedHashMap<>();
             Map<LocalDate, Long> outputByDay = new LinkedHashMap<>();
-            for (Session s : sessions) {
-                LocalDate day = s.getCreatedAt().toLocalDate();
-                long total = s.getTotalTokens() != null ? s.getTotalTokens() : 0;
-                inputByDay.merge(day, (long) (total * 0.7), Long::sum);
-                outputByDay.merge(day, (long) (total * 0.3), Long::sum);
+            for (CostRecord r : records) {
+                if (r.getRecordedAt() == null) {
+                    continue;
+                }
+                LocalDate day = r.getRecordedAt().toLocalDate();
+                inputByDay.merge(day, r.getTokenInput() != null ? r.getTokenInput() : 0L, Long::sum);
+                outputByDay.merge(day, r.getTokenOutput() != null ? r.getTokenOutput() : 0L, Long::sum);
             }
             series = new ArrayList<>();
             for (LocalDate d = startTime.toLocalDate(); !d.isAfter(LocalDate.now()); d = d.plusDays(1)) {
@@ -210,12 +222,15 @@ public class MonitorServiceImpl implements MonitorService {
             }
         }
 
-        // summary
+        // summary（费用为 cost_record 中按各 Agent 配置单价算出的真实总额）
         long totalInput = series.stream().mapToLong(TokenTrendPointVO::getInput).sum();
         long totalOutput = series.stream().mapToLong(TokenTrendPointVO::getOutput).sum();
-
-        // 计算费用（简化：按 $0.002/1K tokens 粗算）
-        double totalCost = (totalInput + totalOutput) / 1000.0 * 0.002;
+        double totalCost = 0;
+        for (CostRecord r : records) {
+            if (r.getCost() != null) {
+                totalCost += r.getCost().doubleValue();
+            }
+        }
 
         TokenTrendSummaryVO result = new TokenTrendSummaryVO();
         result.setSeries(series);
@@ -247,26 +262,27 @@ public class MonitorServiceImpl implements MonitorService {
             vo.setAgentId(agent.getId());
             vo.setAgentName(agent.getDisplayName() != null ? agent.getDisplayName() : agent.getName());
 
-            // 最近 24h 调用次数
-            LambdaQueryWrapper<Session> sessionWrapper = new LambdaQueryWrapper<Session>()
-                    .eq(Session::getWorkspaceId, workspaceId)
-                    .eq(Session::getAgentId, agent.getId())
-                    .ge(Session::getCreatedAt, yesterday);
-            long callCount = sessionMapper.selectCount(sessionWrapper);
+            // 最近 24h 调用次数：成功（cost_record）+ 失败（error_log）
+            long successCount = costRecordMapper.selectCount(new LambdaQueryWrapper<CostRecord>()
+                    .eq(CostRecord::getWorkspaceId, workspaceId)
+                    .eq(CostRecord::getAgentId, agent.getId())
+                    .ge(CostRecord::getRecordedAt, yesterday));
+            long errorCount = errorLogMapper.selectCount(new LambdaQueryWrapper<ErrorLog>()
+                    .eq(ErrorLog::getWorkspaceId, workspaceId)
+                    .eq(ErrorLog::getAgentId, agent.getId())
+                    .ge(ErrorLog::getOccurredAt, yesterday));
+            long callCount = successCount + errorCount;
             vo.setCallCount24h((int) callCount);
 
-            // 成功率（从 Agent 冗余字段读取，或实时计算）
-            if (agent.getSuccessRate() != null) {
-                vo.setSuccessRate(agent.getSuccessRate().doubleValue() / 100.0);
-            } else {
-                vo.setSuccessRate(callCount > 0 ? 1.0 : 0.0);
-            }
+            // 成功率：真实成功/失败比（24h 无调用视为满值，避免闲置 Agent 误报异常）；对外按百分数输出
+            double rate = callCount > 0 ? (double) successCount / callCount : 1.0;
+            vo.setSuccessRate(rate * 100.0);
 
-            // 平均延迟
-            vo.setAvgLatencyMs(agent.getAvgLatencyMs() != null ? agent.getAvgLatencyMs() : 0);
+            // 平均延迟：近 24h 该 Agent 各次 AI 回复的真实耗时均值
+            Double avgLatency = avgLatency(workspaceId, agent.getId(), yesterday, LocalDateTime.now());
+            vo.setAvgLatencyMs(avgLatency != null ? (int) Math.round(avgLatency) : 0);
 
             // 健康状态判断
-            double rate = vo.getSuccessRate();
             if (rate >= 0.95) {
                 vo.setStatus("healthy");
             } else if (rate >= 0.85) {
@@ -418,6 +434,27 @@ public class MonitorServiceImpl implements MonitorService {
     }
 
     // ====== 辅助方法 ======
+
+    /**
+     * 指定时间窗内的平均消息延迟（session.latency 为每次 AI 回复耗时）。
+     * agentId 传 null 表示全工作空间；窗口内无数据返回 null。
+     */
+    private Double avgLatency(Long workspaceId, Long agentId, LocalDateTime start, LocalDateTime end) {
+        List<Session> sessions = sessionMapper.selectList(new LambdaQueryWrapper<Session>()
+                .eq(Session::getWorkspaceId, workspaceId)
+                .eq(agentId != null, Session::getAgentId, agentId)
+                .ge(Session::getCreatedAt, start)
+                .lt(Session::getCreatedAt, end)
+                .isNotNull(Session::getLatency));
+        if (sessions.isEmpty()) {
+            return null;
+        }
+        long sum = 0;
+        for (Session s : sessions) {
+            sum += s.getLatency() != null ? s.getLatency() : 0;
+        }
+        return (double) sum / sessions.size();
+    }
 
     private AlertRuleVO toAlertRuleVO(AlertRule rule) {
         AlertRuleVO vo = new AlertRuleVO();

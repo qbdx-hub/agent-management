@@ -5,6 +5,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -60,6 +61,16 @@ public class GlobalExceptionHandler {
         }
         log.warn("唯一约束冲突: {}", msg);
         return Result.error(ResultCode.PARAM_ERROR.getCode(), "数据已存在，请刷新后重试");
+    }
+
+    /**
+     * 请求体不可读（JSON 语法错误 / 编码非 UTF-8 / 类型不匹配）。
+     * 客户端问题应回 400 参数错误，而不是落入兜底 500 掩盖真实原因。
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Result<Void> handleNotReadable(HttpMessageNotReadableException e) {
+        log.warn("请求体解析失败: {}", e.getMostSpecificCause().getMessage());
+        return Result.error(ResultCode.PARAM_ERROR.getCode(), "请求体格式错误，请检查 JSON 与编码（UTF-8）");
     }
 
     /** 兜底：未知异常 */

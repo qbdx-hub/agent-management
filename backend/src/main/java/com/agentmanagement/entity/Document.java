@@ -30,7 +30,7 @@ public class Document implements Serializable {
     /** 文件名 */
     private String name;
 
-    /** 文件类型：pdf/txt/md/docx/csv */
+    /** 文件类型：pdf/txt/md/json/csv 及代码文本类（与 DocumentServiceImpl 白名单一致，无 docx） */
     private String fileType;
 
     /** 文件大小（bytes） */

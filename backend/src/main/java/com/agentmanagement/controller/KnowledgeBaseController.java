@@ -9,6 +9,7 @@ import com.agentmanagement.service.DocumentProcessingService;
 import com.agentmanagement.service.DocumentService;
 import com.agentmanagement.service.KnowledgeBaseService;
 import com.agentmanagement.service.RetrievalService;
+import com.agentmanagement.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,9 +49,10 @@ public class KnowledgeBaseController {
     public Result<KnowledgeBase> create(
             @Valid @RequestBody KnowledgeBaseCreateForm form,
             @RequestHeader("X-Workspace-Id") Long workspaceId,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
             HttpServletRequest request) {
+        // 身份取自 JWT 认证上下文，不信任客户端可伪造的 X-User-Id 头
+        Long userId = SecurityUtils.currentUserId();
         KnowledgeBase kb = knowledgeBaseService.create(form, userId, workspaceId);
 
         // 记录审计日志
@@ -89,9 +91,9 @@ public class KnowledgeBaseController {
     public Result<Void> delete(
             @PathVariable Long id,
             @RequestHeader("X-Workspace-Id") Long workspaceId,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
             HttpServletRequest request) {
+        Long userId = SecurityUtils.currentUserId();
         // 先查询知识库名称用于日志记录
         KnowledgeBase kb = knowledgeBaseService.getByIdChecked(id, workspaceId);
         String kbName = kb.getName();
@@ -126,9 +128,9 @@ public class KnowledgeBaseController {
             @PathVariable Long kbId,
             @RequestParam("file") MultipartFile file,
             @RequestHeader("X-Workspace-Id") Long workspaceId,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
             HttpServletRequest request) {
+        Long userId = SecurityUtils.currentUserId();
         Document doc = documentService.upload(kbId, file, userId);
 
         // 记录审计日志
@@ -149,9 +151,9 @@ public class KnowledgeBaseController {
             @PathVariable Long kbId,
             @PathVariable Long docId,
             @RequestHeader("X-Workspace-Id") Long workspaceId,
-            @RequestHeader(value = "X-User-Id", required = false, defaultValue = "1") Long userId,
             @RequestHeader(value = "X-User-Name", required = false, defaultValue = "") String userName,
             HttpServletRequest request) {
+        Long userId = SecurityUtils.currentUserId();
         documentService.deleteById(docId, kbId);
 
         // 记录审计日志
@@ -174,7 +176,8 @@ public class KnowledgeBaseController {
             @PathVariable Long kbId,
             @RequestParam("q") String query,
             @RequestParam(defaultValue = "5") int topK) {
-        return Result.success(retrievalService.search(kbId, query, topK));
+        return Result.success(retrievalService.search(kbId, query, topK,
+                SecurityUtils.currentUserId(), SecurityUtils.currentWorkspaceId()));
     }
 
     /**

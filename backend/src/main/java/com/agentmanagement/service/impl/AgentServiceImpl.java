@@ -6,6 +6,8 @@ import com.agentmanagement.common.ResultCode;
 import com.agentmanagement.entity.Agent;
 import com.agentmanagement.entity.AgentPromptVersion;
 import com.agentmanagement.entity.AgentToolBinding;
+import com.agentmanagement.entity.KnowledgeBase;
+import com.agentmanagement.entity.Tool;
 import com.agentmanagement.entity.User;
 import com.agentmanagement.form.AgentCreateForm;
 import com.agentmanagement.form.AgentQueryForm;
@@ -13,8 +15,11 @@ import com.agentmanagement.form.AgentUpdateForm;
 import com.agentmanagement.mapper.AgentMapper;
 import com.agentmanagement.mapper.AgentPromptVersionMapper;
 import com.agentmanagement.mapper.AgentToolBindingMapper;
+import com.agentmanagement.mapper.KnowledgeBaseMapper;
+import com.agentmanagement.mapper.ToolMapper;
 import com.agentmanagement.mapper.UserMapper;
 import com.agentmanagement.security.SecurityUtils;
+import com.agentmanagement.security.UserRoleChecker;
 import com.agentmanagement.service.AgentService;
 import com.agentmanagement.vo.AgentSummaryVO;
 import com.agentmanagement.vo.AgentVO;
@@ -28,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -54,6 +60,15 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
 
     @Autowired
     private AgentPromptVersionMapper agentPromptVersionMapper;
+
+    @Autowired
+    private KnowledgeBaseMapper knowledgeBaseMapper;
+
+    @Autowired
+    private ToolMapper toolMapper;
+
+    @Autowired
+    private UserRoleChecker userRoleChecker;
 
     /** Agent 合法状态机取值 */
     private static final Set<String> VALID_AGENT_STATUS = new HashSet<String>(Arrays.asList(
@@ -84,6 +99,9 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         Page<Agent> result = agentMapper.selectPage(page, qw);
         Map<Long, String> creatorNameMap = loadUserNames(
                 result.getRecords().stream().map(Agent::getCreatedBy).filter(Objects::nonNull).collect(Collectors.toSet()));
+        // 批量统计本页各 Agent 启用中的工具绑定数，避免 N+1 查询
+        Map<Long, Long> toolCountMap = countEnabledBindings(
+                result.getRecords().stream().map(Agent::getId).collect(Collectors.toSet()));
 
         List<AgentSummaryVO> list = new ArrayList<AgentSummaryVO>();
         for (Agent agent : result.getRecords()) {
@@ -95,9 +113,11 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
             vo.setStatus(agent.getStatus());
             vo.setModelName(agent.getModelName());
             vo.setTags(agent.getTags() != null ? agent.getTags() : new ArrayList<String>());
-            vo.setToolCount(0); // 工具绑定子接口未接通，暂固定 0
+            vo.setToolCount(toolCountMap.getOrDefault(agent.getId(), 0L).intValue());
             vo.setTotalSessions(agent.getTotalSessions());
-            vo.setSuccessRate(agent.getSuccessRate());
+            // 成功率：0 会话无数据，返回 null 由前端显示「—」（历史默认值 100 不可信）
+            vo.setSuccessRate(agent.getTotalSessions() != null && agent.getTotalSessions() > 0
+                    ? agent.getSuccessRate() : null);
             vo.setAvgLatencyMs(agent.getAvgLatencyMs());
             vo.setCreatedBy(agent.getCreatedBy());
             vo.setCreatorName(creatorNameMap.get(agent.getCreatedBy()));
@@ -138,8 +158,13 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateAgent(Long id, AgentUpdateForm form) {
         Agent agent = requireAgentInWorkspace(id);
+        Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long currentUserId = SecurityUtils.currentUserId();
+        // 知识库绑定隔离：只允许绑定当前用户可见的库（admin 全部/本人创建/历史 NULL）
+        checkKnowledgeBaseAccess(form.getKnowledgeBaseIds(), currentUserId, workspaceId);
         Agent update = new Agent();
         update.setId(agent.getId());
         // 基本信息
@@ -175,8 +200,32 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         update.setReflectionEnabled(form.getReflectionEnabled());
         update.setReflectionDepth(form.getReflectionDepth());
         update.setOutputSchema(form.getOutputSchema());
-        // MyBatis-Plus updateById 默认仅更新非 null 字段，实现部分更新语义
-        agentMapper.updateById(update);
+        // MyBatis-Plus updateById 默认仅更新非 null 字段，实现部分更新语义。
+        // 全 null 时会生成无 SET 子句的 UPDATE agent WHERE id=?，被 Druid wall 拒绝 → 仅在
+        // 至少一个标量字段非 null 时才执行（工具绑定在下方独立处理，不依赖这次 update）。
+        boolean hasScalar = update.getName() != null || update.getDescription() != null
+                || update.getAvatar() != null || update.getTags() != null
+                || update.getAiBaseUrl() != null || update.getAiApiKey() != null
+                || update.getAiModel() != null || update.getModelProvider() != null
+                || update.getModelName() != null || update.getTemperature() != null
+                || update.getMaxTokens() != null || update.getTopP() != null
+                || update.getSystemPrompt() != null || update.getPromptVariables() != null
+                || update.getMemoryStrategy() != null || update.getWorkingWindow() != null
+                || update.getLongTermEnabled() != null || update.getKnowledgeBaseIds() != null
+                || update.getInputPricePerMillion() != null
+                || update.getCachedInputPricePerMillion() != null
+                || update.getOutputPricePerMillion() != null
+                || update.getMaxIterations() != null || update.getTimeout() != null
+                || update.getReflectionEnabled() != null || update.getReflectionDepth() != null
+                || update.getOutputSchema() != null;
+        if (hasScalar) {
+            agentMapper.updateById(update);
+        }
+
+        // 工具绑定：前端全量提交（所有工具 + enabled 标记），null 表示本次不改绑定
+        if (form.getToolBindings() != null) {
+            replaceToolBindings(agent.getId(), form.getToolBindings(), workspaceId);
+        }
     }
 
     @Override
@@ -221,6 +270,118 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         return agent;
     }
 
+    /** 校验待绑定的知识库全部对当前用户可见：须属于当前工作空间，admin 全部可见，普通用户仅本人创建或历史 NULL */
+    private void checkKnowledgeBaseAccess(List<Long> kbIds, Long userId, Long workspaceId) {
+        if (kbIds == null || kbIds.isEmpty()) {
+            return;
+        }
+        boolean admin = userRoleChecker.isAdmin(userId);
+        for (Long kbId : kbIds) {
+            KnowledgeBase kb = knowledgeBaseMapper.selectById(kbId);
+            boolean visible = kb != null && workspaceId.equals(kb.getWorkspaceId())
+                    && (admin || kb.getCreatedBy() == null || kb.getCreatedBy().equals(userId));
+            if (!visible) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "知识库不存在或无权限绑定: " + kbId);
+            }
+        }
+    }
+
+    /**
+     * 全量替换 Agent 的工具绑定：先删后插（绑定数量少，代价可忽略），
+     * 只落 enabled=true 的绑定，并回填受影响工具的 bind_agent_count 统计。
+     */
+    private void replaceToolBindings(Long agentId, List<AgentUpdateForm.ToolBindingItem> items, Long workspaceId) {
+        // 旧绑定涉及的工具也要回填计数（解绑后计数需下降）
+        Set<Long> affectedToolIds = agentToolBindingMapper.selectList(new LambdaQueryWrapper<AgentToolBinding>()
+                        .eq(AgentToolBinding::getAgentId, agentId))
+                .stream().map(AgentToolBinding::getToolId).collect(Collectors.toSet());
+
+        // 校验工具属于当前工作空间；按 toolId 去重
+        Set<Long> enabledToolIds = new HashSet<>();
+        List<AgentToolBinding> toInsert = new ArrayList<>();
+        for (AgentUpdateForm.ToolBindingItem item : items) {
+            if (item == null || item.getToolId() == null || !Boolean.TRUE.equals(item.getEnabled())) {
+                continue;
+            }
+            if (!enabledToolIds.add(item.getToolId())) {
+                continue;
+            }
+            Tool tool = toolMapper.selectById(item.getToolId());
+            // 工具市场全局共享：任意账户可绑定任意工具，仅校验存在性
+            if (tool == null) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "工具不存在: " + item.getToolId());
+            }
+            AgentToolBinding binding = new AgentToolBinding();
+            binding.setAgentId(agentId);
+            binding.setToolId(item.getToolId());
+            binding.setEnabled(1);
+            binding.setCreatedAt(LocalDateTime.now());
+            toInsert.add(binding);
+        }
+
+        agentToolBindingMapper.delete(new LambdaQueryWrapper<AgentToolBinding>()
+                .eq(AgentToolBinding::getAgentId, agentId));
+        for (AgentToolBinding binding : toInsert) {
+            agentToolBindingMapper.insert(binding);
+        }
+
+        affectedToolIds.addAll(enabledToolIds);
+        refreshToolBindCount(affectedToolIds);
+    }
+
+    /** 回填工具的 bind_agent_count（enabled=1 的绑定数） */
+    private void refreshToolBindCount(Collection<Long> toolIds) {
+        for (Long toolId : toolIds) {
+            Long count = agentToolBindingMapper.selectCount(new LambdaQueryWrapper<AgentToolBinding>()
+                    .eq(AgentToolBinding::getToolId, toolId)
+                    .eq(AgentToolBinding::getEnabled, 1));
+            Tool update = new Tool();
+            update.setId(toolId);
+            update.setBindAgentCount(count.intValue());
+            toolMapper.updateById(update);
+        }
+    }
+
+    /** 加载 Agent 的全部绑定（含未启用），关联 tool 表取名称/图标；工具已删除的脏绑定跳过 */
+    private List<AgentVO.BoundTool> loadBoundTools(Long agentId) {
+        List<AgentToolBinding> bindings = agentToolBindingMapper.selectList(
+                new LambdaQueryWrapper<AgentToolBinding>()
+                        .eq(AgentToolBinding::getAgentId, agentId)
+                        .orderByAsc(AgentToolBinding::getCreatedAt));
+        if (bindings.isEmpty()) {
+            return new ArrayList<AgentVO.BoundTool>();
+        }
+        List<Long> toolIds = bindings.stream().map(AgentToolBinding::getToolId).collect(Collectors.toList());
+        Map<Long, Tool> toolMap = toolMapper.selectBatchIds(toolIds).stream()
+                .collect(Collectors.toMap(Tool::getId, t -> t));
+        List<AgentVO.BoundTool> result = new ArrayList<>();
+        for (AgentToolBinding binding : bindings) {
+            Tool tool = toolMap.get(binding.getToolId());
+            if (tool == null) {
+                continue;
+            }
+            AgentVO.BoundTool bt = new AgentVO.BoundTool();
+            bt.setToolId(tool.getId());
+            bt.setToolName(tool.getDisplayName() != null ? tool.getDisplayName() : tool.getName());
+            bt.setToolIcon(tool.getIcon());
+            bt.setEnabled(binding.getEnabled() != null && binding.getEnabled() == 1);
+            result.add(bt);
+        }
+        return result;
+    }
+
+    /** 统计各 Agent 启用中的工具绑定数 */
+    private Map<Long, Long> countEnabledBindings(Collection<Long> agentIds) {
+        if (agentIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<AgentToolBinding> bindings = agentToolBindingMapper.selectList(
+                new LambdaQueryWrapper<AgentToolBinding>()
+                        .in(AgentToolBinding::getAgentId, agentIds)
+                        .eq(AgentToolBinding::getEnabled, 1));
+        return bindings.stream().collect(Collectors.groupingBy(AgentToolBinding::getAgentId, Collectors.counting()));
+    }
+
     /** 扁平 entity → 嵌套 AgentVO（config + stats） */
     private AgentVO toDetailVO(Agent agent) {
         AgentVO vo = new AgentVO();
@@ -252,7 +413,7 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         config.setSystemPrompt(agent.getSystemPrompt() != null ? agent.getSystemPrompt() : "");
         config.setPromptVariables(agent.getPromptVariables() != null
                 ? agent.getPromptVariables() : new ArrayList<Map<String, Object>>());
-        config.setBoundTools(new ArrayList<AgentVO.BoundTool>()); // 工具绑定子接口未接通
+        config.setBoundTools(loadBoundTools(agent.getId()));
 
         AgentVO.Memory memory = new AgentVO.Memory();
         memory.setWorkingWindow(agent.getWorkingWindow());
@@ -283,7 +444,8 @@ public class AgentServiceImpl extends ServiceImpl<AgentMapper, Agent> implements
         stats.setTotalMessages(agent.getTotalMessages());
         stats.setTotalTokens(agent.getTotalTokens());
         stats.setTotalCost(agent.getTotalCost());
-        stats.setSuccessRate(agent.getSuccessRate());
+        stats.setSuccessRate(agent.getTotalSessions() != null && agent.getTotalSessions() > 0
+                ? agent.getSuccessRate() : null);
         stats.setAvgLatencyMs(agent.getAvgLatencyMs());
         stats.setAvgStepsPerSession(BigDecimal.ZERO); // 暂无对应统计字段
         vo.setStats(stats);

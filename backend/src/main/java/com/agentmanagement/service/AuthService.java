@@ -6,6 +6,8 @@ import com.agentmanagement.form.UserProfileForm;
 import com.agentmanagement.vo.LoginVO;
 import com.agentmanagement.vo.UserVO;
 
+import java.util.Map;
+
 /**
  * 认证服务（登录、注册、当前用户信息、个人信息修改）。
  * auth 无独立 entity 的 CRUD，不继承 IService。
@@ -34,4 +36,15 @@ public interface AuthService {
      * 密码修改需先校验旧密码。
      */
     void updateProfile(Long userId, UserProfileForm form);
+
+    /**
+     * 读取当前用户偏好（user.preferences JSON）。
+     * 未设置时返回移动端约定的默认结构（模型/温度/通知等）。
+     */
+    Map<String, Object> getPreferences(Long userId);
+
+    /**
+     * 全量覆盖保存用户偏好（JSON 透传，结构由前端约定）。
+     */
+    void updatePreferences(Long userId, Map<String, Object> preferences);
 }

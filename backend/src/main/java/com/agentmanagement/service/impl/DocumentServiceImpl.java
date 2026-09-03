@@ -3,10 +3,13 @@ package com.agentmanagement.service.impl;
 import com.agentmanagement.common.BusinessException;
 import com.agentmanagement.common.ResultCode;
 import com.agentmanagement.entity.Document;
+import com.agentmanagement.entity.DocumentChunk;
 import com.agentmanagement.entity.KnowledgeBase;
+import com.agentmanagement.mapper.DocumentChunkMapper;
 import com.agentmanagement.mapper.DocumentMapper;
 import com.agentmanagement.mapper.KnowledgeBaseMapper;
 import com.agentmanagement.security.SecurityUtils;
+import com.agentmanagement.security.UserRoleChecker;
 import com.agentmanagement.service.DocumentService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -33,6 +36,12 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
 
     @Autowired
     private KnowledgeBaseMapper knowledgeBaseMapper;
+
+    @Autowired
+    private DocumentChunkMapper documentChunkMapper;
+
+    @Autowired
+    private UserRoleChecker userRoleChecker;
 
     /** 文件上传根目录 */
     @Value("${file.upload-dir:./uploads}")
@@ -95,30 +104,39 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     @Override
     public List<Document> listByKnowledgeBase(Long kbId) {
         Long userId = SecurityUtils.currentUserId();
-        return baseMapper.selectList(
-                new LambdaQueryWrapper<Document>()
-                        .eq(Document::getKnowledgeBaseId, kbId)
-                        .and(w -> w.eq(Document::getUploadedBy, userId)
-                                .or().isNull(Document::getUploadedBy))
-                        .orderByDesc(Document::getCreatedAt));
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<Document>()
+                .eq(Document::getKnowledgeBaseId, kbId);
+        // admin 可见知识库内全部文档，普通用户仅见自己上传的（历史 NULL 数据对所有人可见）
+        if (!userRoleChecker.isAdmin(userId)) {
+            wrapper.and(w -> w.eq(Document::getUploadedBy, userId)
+                    .or().isNull(Document::getUploadedBy));
+        }
+        wrapper.orderByDesc(Document::getCreatedAt);
+        return baseMapper.selectList(wrapper);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteById(Long docId, Long kbId) {
         Long userId = SecurityUtils.currentUserId();
-        Document doc = baseMapper.selectOne(
-                new LambdaQueryWrapper<Document>()
-                        .eq(Document::getId, docId)
-                        .eq(Document::getKnowledgeBaseId, kbId)
-                        .and(w -> w.eq(Document::getUploadedBy, userId)
-                                .or().isNull(Document::getUploadedBy)));
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<Document>()
+                .eq(Document::getId, docId)
+                .eq(Document::getKnowledgeBaseId, kbId);
+        if (!userRoleChecker.isAdmin(userId)) {
+            wrapper.and(w -> w.eq(Document::getUploadedBy, userId)
+                    .or().isNull(Document::getUploadedBy));
+        }
+        Document doc = baseMapper.selectOne(wrapper);
         if (doc == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "文档不存在");
         }
 
         // 删除磁盘文件
         deleteFile(doc.getFileUrl());
+
+        // 级联删除检索分块，避免孤儿分块残留污染检索结果
+        documentChunkMapper.delete(new LambdaQueryWrapper<DocumentChunk>()
+                .eq(DocumentChunk::getDocumentId, docId));
 
         // 删除记录
         baseMapper.deleteById(docId);

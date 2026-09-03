@@ -23,10 +23,24 @@ public interface AiService {
                                         List<Map<String, String>> messages);
 
     /**
-     * 聊天补全（流式）—— 通过 SseEmitter 逐块推送
+     * 聊天补全（流式）—— 通过 SseEmitter 逐块推送 delta 给前端，
+     * 流结束后返回累计的完整回复与 token usage（上游支持 include_usage 时为真实值，否则为 null）。
+     * 不负责发送 done 事件（由调用方持久化后统一发送）；失败抛 RuntimeException，由调用方统一处理。
      */
-    void chatCompletionStream(String baseUrl, String apiKey, String model,
-                              List<Map<String, String>> messages, SseEmitter emitter);
+    ChatCompletionResult chatCompletionStream(String baseUrl, String apiKey, String model,
+                                              List<Map<String, String>> messages, SseEmitter emitter);
+
+    /**
+     * 聊天补全（流式，带工具）—— Function Calling 版本。
+     * @param tools OpenAI 格式工具定义 [{type:"function", function:{name, description, parameters}}]，可为 null
+     *              消息列表支持三种形态：{role, content} 普通消息、
+     *              {role:"assistant", tool_calls:[{id,type,function:{name,arguments}}]} 模型工具调用、
+     *              {role:"tool", tool_call_id, content} 工具执行结果。
+     *              模型请求工具时 content 为空、toolCalls 非空（delta 不推给前端，由调用方执行工具后再次调用）。
+     */
+    ChatCompletionResult chatCompletionStream(String baseUrl, String apiKey, String model,
+                                              List<Map<String, Object>> messages,
+                                              List<Map<String, Object>> tools, SseEmitter emitter);
 
     /**
      * 生成文本的 embedding 向量
@@ -63,5 +77,34 @@ public interface AiService {
         public void setTotalTokens(Long totalTokens) { this.totalTokens = totalTokens; }
         public Long getCachedTokens() { return cachedTokens; }
         public void setCachedTokens(Long cachedTokens) { this.cachedTokens = cachedTokens; }
+
+        private List<ToolCall> toolCalls;
+
+        /** 模型请求的工具调用列表；非工具轮次为 null */
+        public List<ToolCall> getToolCalls() { return toolCalls; }
+        public void setToolCalls(List<ToolCall> toolCalls) { this.toolCalls = toolCalls; }
+    }
+
+    /** 模型发起的一次工具调用（function calling） */
+    class ToolCall {
+        private String id;
+        private String name;
+        /** JSON 字符串形式的参数 */
+        private String arguments;
+
+        public ToolCall() {}
+
+        public ToolCall(String id, String name, String arguments) {
+            this.id = id;
+            this.name = name;
+            this.arguments = arguments;
+        }
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getArguments() { return arguments; }
+        public void setArguments(String arguments) { this.arguments = arguments; }
     }
 }

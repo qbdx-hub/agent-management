@@ -45,7 +45,17 @@ public enum ResultCode {
 
     // ----- Tool 模块(22xx) -----
     /** 工具不存在或不属于当前工作空间 */
-    TOOL_NOT_FOUND(2201, "工具不存在");
+    TOOL_NOT_FOUND(2201, "工具不存在"),
+
+    // ----- 成本/预算模块(23xx) -----
+    /** 预算超支且启用熔断，AI 调用被拒绝 */
+    BUDGET_EXCEEDED(2301, "预算已超支，AI 调用被熔断"),
+
+    // ----- 移动端/安全扩展(24xx) -----
+    /** 每用户 API 密钥数量达上限（5 个） */
+    API_KEY_LIMIT(2401, "最多创建5个API密钥"),
+    /** API 密钥不存在或不属于当前用户 */
+    API_KEY_NOT_FOUND(2402, "API密钥不存在");
 
     private final Integer code;
     private final String message;

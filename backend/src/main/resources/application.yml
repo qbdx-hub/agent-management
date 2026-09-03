@@ -12,7 +12,8 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://10.7.17.154:3306/agent_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    # MySQL 在本机：用 127.0.0.1，避免换网/换 WiFi 后本机 IP 变化导致连不上
+    url: jdbc:mysql://127.0.0.1:3306/agent_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: dev
     password: dev123456
 

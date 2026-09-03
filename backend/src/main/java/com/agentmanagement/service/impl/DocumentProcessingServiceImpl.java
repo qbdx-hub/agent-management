@@ -12,6 +12,8 @@ import com.agentmanagement.service.AiService;
 import com.agentmanagement.service.DocumentProcessingService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -27,7 +29,7 @@ import java.util.List;
 
 /**
  * 文档处理服务实现 —— 文本提取 → 分块 → embedding → 存储。
- * 支持 txt/md/json/csv/yaml 等纯文本格式。
+ * 支持 txt/md/json/csv/yaml 等纯文本格式；pdf 用 PDFBox 提取文本。
  */
 @Slf4j
 @Service
@@ -57,7 +59,7 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
     private static final int DEFAULT_CHUNK_OVERLAP = 50;
 
     @Override
-    @Async
+    @Async("docProcessExecutor")
     public void processDocument(Long documentId) {
         Document doc = documentMapper.selectById(documentId);
         if (doc == null) {
@@ -77,7 +79,10 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
                 throw new IOException("文件不存在: " + filePath);
             }
 
-            String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+            String content = extractText(file, doc.getFileType());
+            if (content.trim().isEmpty()) {
+                throw new IOException("文件内容为空或未提取到文本");
+            }
 
             // 2. 分块
             KnowledgeBase kb = knowledgeBaseMapper.selectById(doc.getKnowledgeBaseId());
@@ -248,6 +253,28 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
         return (int) (chinese * 1.5 + other / 4.0);
     }
 
+    /**
+     * 按文件类型提取文本：pdf 走 PDFBox，其余按 UTF-8 纯文本读取。
+     * 注意：不能把二进制（如 pdf）直接当 UTF-8 解码，否则乱码入库、检索必错。
+     */
+    private String extractText(File file, String fileType) throws IOException {
+        if ("pdf".equalsIgnoreCase(fileType)) {
+            try (PDDocument document = PDDocument.load(file)) {
+                if (document.isEncrypted()) {
+                    throw new IOException("暂不支持解析加密的 PDF 文件");
+                }
+                PDFTextStripper stripper = new PDFTextStripper();
+                stripper.setSortByPosition(true);
+                String text = stripper.getText(document);
+                if (text == null || text.trim().isEmpty()) {
+                    throw new IOException("PDF 中未提取到文本（可能是扫描件/纯图片 PDF）");
+                }
+                return text;
+            }
+        }
+        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+    }
+
     /** 查找绑定了指定知识库的 Agent 列表 */
     private List<Agent> findAgentsWithKnowledgeBase(Long knowledgeBaseId) {
         // 查询所有 agent，检查 knowledgeBaseIds JSON 数组是否包含该 ID
@@ -257,8 +284,17 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
         List<Agent> allAgents = agentMapper.selectList(wrapper);
         List<Agent> result = new ArrayList<>();
         for (Agent agent : allAgents) {
-            if (agent.getKnowledgeBaseIds() != null && agent.getKnowledgeBaseIds().contains(knowledgeBaseId)) {
-                result.add(agent);
+            if (agent.getKnowledgeBaseIds() == null) {
+                continue;
+            }
+            // JSON 反序列化后元素可能是 Integer，直接 contains(Long) 恒为 false，需转 Long 再比较
+            // （与 RetrievalServiceImpl#findAgentsWithKnowledgeBase 同一坑，保持同一写法）
+            for (Object rawId : agent.getKnowledgeBaseIds()) {
+                Long id = rawId instanceof Number ? ((Number) rawId).longValue() : Long.valueOf(rawId.toString());
+                if (id.equals(knowledgeBaseId)) {
+                    result.add(agent);
+                    break;
+                }
             }
         }
         return result;
