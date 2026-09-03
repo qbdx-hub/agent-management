@@ -54,9 +54,11 @@ public class WorkflowServiceImpl extends ServiceImpl<WorkflowMapper, Workflow> i
     @Override
     public PageResult<WorkflowSummaryVO> pageWorkflows(WorkflowQueryForm form) {
         Long workspaceId = SecurityUtils.currentWorkspaceId();
+        Long currentUserId = SecurityUtils.currentUserId();
         Page<Workflow> page = new Page<Workflow>(form.getPage(), form.getPageSize());
         LambdaQueryWrapper<Workflow> qw = new LambdaQueryWrapper<Workflow>();
         qw.eq(Workflow::getWorkspaceId, workspaceId);
+        qw.eq(Workflow::getCreatedBy, currentUserId);
         if (StringUtils.hasText(form.getKeyword())) {
             qw.like(Workflow::getName, form.getKeyword());
         }
@@ -172,7 +174,9 @@ public class WorkflowServiceImpl extends ServiceImpl<WorkflowMapper, Workflow> i
     private Workflow requireWorkflowInWorkspace(Long id) {
         Workflow wf = workflowMapper.selectById(id);
         Long workspaceId = SecurityUtils.currentWorkspaceId();
-        if (wf == null || !workspaceId.equals(wf.getWorkspaceId())) {
+        Long currentUserId = SecurityUtils.currentUserId();
+        if (wf == null || !workspaceId.equals(wf.getWorkspaceId())
+                || !currentUserId.equals(wf.getCreatedBy())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
         }
         return wf;
