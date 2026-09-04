@@ -117,8 +117,6 @@ npm run dev
 - [API 接口规范](docs/api-specification.md)
 - [数据库建表脚本](docs/database-schema.sql)
 - [数据库表-模块对应关系](docs/database-module-mapping.md)
-- [Git 培训教程](docs/git-training.md)
-- [Git 命令速查](docs/git-cheatsheet.md)
 
 ## 团队协作
 
