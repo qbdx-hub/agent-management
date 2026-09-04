@@ -62,9 +62,11 @@ async function submit() {
       <div class="pad" style="padding-top: calc(var(--safe-top) + 72px)">
         <!-- Logo -->
         <div class="logo-row">
-          <div class="logo"><AppIcon name="send" :size="24" /></div>
+          <div class="logo"><img src="@/assets/logo/mascot.png" alt="灵枢agent" /></div>
           <div>
-            <div class="page-title">灵枢agent</div>
+            <div class="page-title">
+              <img class="page-wordmark" src="@/assets/logo/wordmark.png" alt="灵枢agent" />
+            </div>
             <div style="font-size: 12px; color: var(--text-2); margin-top: 2px">智能体管理平台 · 移动端</div>
           </div>
         </div>
@@ -105,15 +107,22 @@ async function submit() {
   gap: 14px;
 }
 .logo {
-  width: 56px;
+  width: 52px;
   height: 56px;
-  border-radius: 16px;
-  background: var(--brand-deep);
-  color: var(--brand);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.logo img {
+  width: 40px;
+  height: auto;
+  display: block;
+}
+.page-wordmark {
+  height: 21px;
+  width: auto;
+  display: block;
 }
 .field {
   width: 100%;

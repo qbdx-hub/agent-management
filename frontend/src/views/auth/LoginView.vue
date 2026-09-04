@@ -62,10 +62,10 @@ async function handleLogin() {
         <path d="M3 13c1.8-3.2 3.7-3.2 5.5 0s3.7 3.2 5.5 0 3.7-3.2 5.5 0" stroke="#4d8fd0" stroke-width="2" stroke-linecap="round"/>
       </svg>
 
-      <div class="logo">
-        <UiIcon name="robot" :size="30" />
-      </div>
-      <h1 class="title">灵枢agent</h1>
+      <img class="logo-mascot" src="@/assets/logo/mascot.png" alt="灵枢agent 吉祥物「小枢」" />
+      <h1 class="title">
+        <img class="title-wordmark" src="@/assets/logo/wordmark.png" alt="灵枢agent" />
+      </h1>
 
       <el-form @submit.prevent="handleLogin" class="login-form">
         <el-form-item>
@@ -177,17 +177,18 @@ async function handleLogin() {
   }
 }
 
-/* 品牌块：与侧边栏 logo-mark 同款（accent-soft 底 + 机器人） */
-.logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-soft);
-  border-radius: 16px;
-  color: var(--accent);
+/* 品牌块：吉祥物「小枢」+ 蜡笔艺术字（取自 Logo 设计稿） */
+.logo-mascot {
+  display: block;
+  width: 88px;
+  height: auto;
+  margin: 0 auto 8px;
+}
+
+.title-wordmark {
+  height: 40px;
+  width: auto;
+  vertical-align: middle;
 }
 
 /* 蜡笔涂鸦：手绘线条小图，点缀卡片四角 */

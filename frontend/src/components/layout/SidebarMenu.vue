@@ -47,8 +47,10 @@ function onSelect(path: string) {
 <template>
   <div class="sidebar">
     <div class="sidebar-logo" :class="{ collapsed: appStore.sidebarCollapsed }">
-      <span class="logo-mark"><UiIcon name="robot" :size="19" /></span>
-      <span v-if="!appStore.sidebarCollapsed" class="logo-text">灵枢agent</span>
+      <span class="logo-mark"><img src="@/assets/logo/mascot.png" alt="" /></span>
+      <span v-if="!appStore.sidebarCollapsed" class="logo-text">
+        <img class="logo-wordmark" src="@/assets/logo/wordmark.png" alt="灵枢agent" />
+      </span>
     </div>
     <el-menu
       :default-active="activeMenu"
@@ -87,16 +89,15 @@ function onSelect(path: string) {
 .logo-text {
   white-space: nowrap;
 }
-.logo-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.logo-mark img {
+  width: 27px;
+  height: auto;
+  display: block;
+}
+.logo-wordmark {
+  height: 17px;
+  width: auto;
+  display: block;
 }
 .sidebar-logo.collapsed {
   padding: 0;

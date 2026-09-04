@@ -110,10 +110,11 @@ function goToLogin() {
 
       <!-- 注册表单 -->
       <div v-if="step === 1">
-        <div class="logo">
-          <UiIcon name="robot" :size="30" />
-        </div>
-        <h1 class="title">创建账号</h1>
+        <img class="logo-mascot" src="@/assets/logo/mascot.png" alt="灵枢agent 吉祥物「小枢」" />
+        <h1 class="title">
+          <img class="title-wordmark" src="@/assets/logo/wordmark.png" alt="灵枢agent" />
+        </h1>
+        <p class="brand-sub">创建账号</p>
 
         <el-form @submit.prevent="handleRegister" class="register-form">
           <el-form-item>
@@ -259,17 +260,25 @@ function goToLogin() {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 品牌块：与登录页/侧边栏一致（accent-soft 底 + 机器人） */
-.logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-soft);
-  border-radius: 16px;
-  color: var(--accent);
+/* 品牌块：与登录页同款（吉祥物「小枢」+ 蜡笔艺术字） */
+.logo-mascot {
+  display: block;
+  width: 88px;
+  height: auto;
+  margin: 0 auto 8px;
+}
+
+.title-wordmark {
+  height: 40px;
+  width: auto;
+  vertical-align: middle;
+}
+
+.brand-sub {
+  text-align: center;
+  color: var(--text-2);
+  font-size: 14px;
+  margin: -24px 0 28px;
 }
 
 /* 蜡笔涂鸦（与登录页同款定位） */
