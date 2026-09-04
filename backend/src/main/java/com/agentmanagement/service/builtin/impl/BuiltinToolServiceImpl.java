@@ -2,7 +2,9 @@ package com.agentmanagement.service.builtin.impl;
 
 import com.agentmanagement.entity.Tool;
 import com.agentmanagement.entity.ToolCallRecord;
+import com.agentmanagement.entity.Workspace;
 import com.agentmanagement.mapper.ToolCallRecordMapper;
+import com.agentmanagement.mapper.WorkspaceMapper;
 import com.agentmanagement.service.ToolService;
 import com.agentmanagement.service.builtin.BuiltinToolResult;
 import com.agentmanagement.service.builtin.BuiltinToolService;
@@ -40,10 +42,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * 内置工具实现。默认会话级沙箱：所有文件/命令操作限制在 agent.sandbox.root/session-{sessionId} 内，
+ * 内置工具实现。空间级沙箱：文件/命令操作限制在 agent.sandbox.root/ws-{workspaceId}/session-{sessionId} 内
+ * （空间设置开启「共享工作目录」则为 ws-{workspaceId}/ 根，空间内会话共享文件区），
  * 路径规范化后必须仍位于沙箱根之下（防绝对路径/.. 穿越）；命令执行限制工作目录 + 超时 + 输出上限；
  * web_fetch 拒绝内网/环回地址（SSRF 防护）。
- * 用户在聊天框显式授权后（outsideSandbox=true），文件/命令工具切换到服务器真实文件系统：
+ * 空间执行策略（空间设置页）：禁用工具名单内工具直接拒绝；「允许沙箱外运行」总闸关闭时拒绝逃逸授权。
+ * 用户在聊天框显式授权后（outsideSandbox=true 且空间允许），文件/命令工具切换到服务器真实文件系统：
  * 相对路径以服务器进程目录为基准、绝对路径放行，命令工作目录同为进程目录（超时/输出上限不变）。
  * 已知边界：不解析符号链接真实路径、命令本身仍可访问系统其他路径（进程级沙箱如 Docker 属后续演进），
  * 当前定位为可信内网环境的开发平台。
@@ -61,6 +65,9 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
 
     @Autowired
     private ToolService toolService;
+
+    @Autowired
+    private WorkspaceMapper workspaceMapper;
 
     /** 抓取/搜索专用 HTTP 客户端 */
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -100,33 +107,43 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
         BuiltinToolResult result;
         try {
             String name = tool.getName();
-            switch (name) {
-                case "read_file":
-                    result = readFile(params, sessionId, outsideSandbox);
-                    break;
-                case "write_file":
-                    result = writeFile(params, sessionId, outsideSandbox);
-                    break;
-                case "edit_file":
-                    result = editFile(params, sessionId, outsideSandbox);
-                    break;
-                case "list_files":
-                    result = listFiles(params, sessionId, outsideSandbox);
-                    break;
-                case "search_files":
-                    result = searchFiles(params, sessionId, outsideSandbox);
-                    break;
-                case "run_command":
-                    result = runCommand(params, sessionId, outsideSandbox);
-                    break;
-                case "web_search":
-                    result = webSearch(params);
-                    break;
-                case "web_fetch":
-                    result = webFetch(params);
-                    break;
-                default:
-                    result = BuiltinToolResult.fail("未知内置工具: " + name);
+            // 空间执行策略（对标 Claude Code 项目级权限）：禁用工具 + 沙箱外总闸
+            Workspace ws = workspaceId != null ? workspaceMapper.selectById(workspaceId) : null;
+            if (isToolDisabled(ws, name)) {
+                result = BuiltinToolResult.fail("空间策略已禁用该工具: " + name
+                        + "（空间管理员可在「空间设置 → Agent 执行环境」中调整）");
+            } else if (outsideSandbox && ws != null && !Boolean.TRUE.equals(ws.getAllowOutsideSandbox())) {
+                result = BuiltinToolResult.fail("空间策略未允许「沙箱外运行」，请让空间管理员在空间设置中开启");
+            } else {
+                SandboxContext ctx = sandboxContext(ws, sessionId, outsideSandbox);
+                switch (name) {
+                    case "read_file":
+                        result = readFile(params, ctx);
+                        break;
+                    case "write_file":
+                        result = writeFile(params, ctx);
+                        break;
+                    case "edit_file":
+                        result = editFile(params, ctx);
+                        break;
+                    case "list_files":
+                        result = listFiles(params, ctx);
+                        break;
+                    case "search_files":
+                        result = searchFiles(params, ctx);
+                        break;
+                    case "run_command":
+                        result = runCommand(params, ctx);
+                        break;
+                    case "web_search":
+                        result = webSearch(params);
+                        break;
+                    case "web_fetch":
+                        result = webFetch(params);
+                        break;
+                    default:
+                        result = BuiltinToolResult.fail("未知内置工具: " + name);
+                }
             }
         } catch (Exception e) {
             log.warn("内置工具执行异常: tool={}, sessionId={}", tool.getName(), sessionId, e);
@@ -142,9 +159,9 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     // ==================== 文件工具 ====================
 
     /** read_file：按行读取文本文件（沙箱内或授权后的真实文件系统），支持 offset/limit 分段读取大文件 */
-    private BuiltinToolResult readFile(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException {
-        Path root = workDir(sessionId, outsideSandbox);
-        Path target = resolveSafe(root, str(params.get("path")), outsideSandbox);
+    private BuiltinToolResult readFile(Map<String, Object> params, SandboxContext ctx) throws IOException {
+        Path root = ctx.root;
+        Path target = resolveSafe(root, str(params.get("path")), ctx.outsideSandbox);
         if (!Files.exists(target)) {
             return BuiltinToolResult.fail("文件不存在: " + str(params.get("path")) + "（可先用 list_files 查看目录）");
         }
@@ -178,12 +195,12 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     }
 
     /** write_file：写入/覆盖文本文件（UTF-8），自动创建父目录 */
-    private BuiltinToolResult writeFile(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException {
-        Path root = workDir(sessionId, outsideSandbox);
+    private BuiltinToolResult writeFile(Map<String, Object> params, SandboxContext ctx) throws IOException {
+        Path root = ctx.root;
         String rel = str(params.get("path"));
         Object contentObj = params.get("content");
         String content = contentObj != null ? contentObj.toString() : "";
-        Path target = resolveSafe(root, rel, outsideSandbox);
+        Path target = resolveSafe(root, rel, ctx.outsideSandbox);
         if (Files.isDirectory(target)) {
             return BuiltinToolResult.fail("目标是目录不能写入: " + rel);
         }
@@ -198,10 +215,10 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     }
 
     /** edit_file：精确字符串替换式编辑，old_string 必须唯一（或显式 replace_all） */
-    private BuiltinToolResult editFile(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException {
-        Path root = workDir(sessionId, outsideSandbox);
+    private BuiltinToolResult editFile(Map<String, Object> params, SandboxContext ctx) throws IOException {
+        Path root = ctx.root;
         String rel = str(params.get("path"));
-        Path target = resolveSafe(root, rel, outsideSandbox);
+        Path target = resolveSafe(root, rel, ctx.outsideSandbox);
         if (!Files.exists(target) || Files.isDirectory(target)) {
             return BuiltinToolResult.fail("文件不存在或是目录: " + rel + "（先用 read_file 确认内容）");
         }
@@ -230,10 +247,10 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     }
 
     /** list_files：glob 模式列举文件，如 **\/*.java、*.txt */
-    private BuiltinToolResult listFiles(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException {
-        Path root = workDir(sessionId, outsideSandbox);
+    private BuiltinToolResult listFiles(Map<String, Object> params, SandboxContext ctx) throws IOException {
+        Path root = ctx.root;
         String base = params.get("path") != null ? str(params.get("path")) : ".";
-        Path baseDir = resolveSafe(root, base, outsideSandbox);
+        Path baseDir = resolveSafe(root, base, ctx.outsideSandbox);
         if (!Files.isDirectory(baseDir)) {
             return BuiltinToolResult.fail("基准路径不是目录: " + base);
         }
@@ -269,14 +286,14 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     }
 
     /** search_files：在文本文件中按内容搜索（Grep），支持正则 */
-    private BuiltinToolResult searchFiles(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException {
-        Path root = workDir(sessionId, outsideSandbox);
+    private BuiltinToolResult searchFiles(Map<String, Object> params, SandboxContext ctx) throws IOException {
+        Path root = ctx.root;
         String keyword = str(params.get("pattern"));
         if (keyword.isEmpty()) {
             return BuiltinToolResult.fail("pattern 不能为空");
         }
         String base = params.get("path") != null ? str(params.get("path")) : ".";
-        Path baseDir = resolveSafe(root, base, outsideSandbox);
+        Path baseDir = resolveSafe(root, base, ctx.outsideSandbox);
         if (!Files.isDirectory(baseDir)) {
             return BuiltinToolResult.fail("基准路径不是目录: " + base);
         }
@@ -324,13 +341,13 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     // ==================== 命令执行 ====================
 
     /** run_command：执行 shell 命令（Windows→cmd /c，Linux→sh -c），工作目录按授权切换，超时强制终止 */
-    private BuiltinToolResult runCommand(Map<String, Object> params, Long sessionId, boolean outsideSandbox) throws IOException, InterruptedException {
+    private BuiltinToolResult runCommand(Map<String, Object> params, SandboxContext ctx) throws IOException, InterruptedException {
         String command = str(params.get("command"));
         if (command.isEmpty()) {
             return BuiltinToolResult.fail("command 不能为空");
         }
         int timeoutMs = Math.min(intOf(params.get("timeout_ms"), 30_000), 120_000);
-        Path root = workDir(sessionId, outsideSandbox);
+        Path root = ctx.root;
 
         boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
         ProcessBuilder pb = windows
@@ -462,21 +479,51 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
 
     // ==================== 沙箱与通用辅助 ====================
 
-    /** 会话沙箱目录：agent.sandbox.root/session-{sessionId}，自动创建 */
-    private Path sandboxDir(Long sessionId) throws IOException {
-        Path root = Paths.get(sandboxRoot, "session-" + sessionId).toAbsolutePath().normalize();
-        Files.createDirectories(root);
-        return root;
+    /** 单次工具调用的沙箱上下文：工作目录根 + 是否沙箱外（随调用链传递，避免逐层查库） */
+    private static class SandboxContext {
+        final Path root;
+        final boolean outsideSandbox;
+
+        SandboxContext(Path root, boolean outsideSandbox) {
+            this.root = root;
+            this.outsideSandbox = outsideSandbox;
+        }
     }
 
     /**
-     * 本次调用的文件/命令工作目录：默认会话沙箱；用户授权沙箱外运行时为服务器进程目录
-     * （相对路径以此为基准、绝对路径放行，真实文件系统可见）。
+     * 解析本次调用的沙箱上下文。空间隔离布局（2026-09-04 空间设置改版）：
+     * 独立沙箱（默认）：agent.sandbox.root/ws-{workspaceId}/session-{sessionId}，各空间互不可见、会话间互不可见；
+     * 共享工作目录（空间开关开启）：agent.sandbox.root/ws-{workspaceId}/，空间内所有会话共用文件区；
+     * 沙箱外（用户授权且空间总闸放行）：服务器进程目录。
+     * workspaceId 为 null 的历史调用防御性回退全局会话目录。
      */
-    private Path workDir(Long sessionId, boolean outsideSandbox) throws IOException {
-        return outsideSandbox
-                ? Paths.get("").toAbsolutePath().normalize()
-                : sandboxDir(sessionId);
+    private SandboxContext sandboxContext(Workspace ws, Long sessionId, boolean outsideSandbox) throws IOException {
+        if (outsideSandbox) {
+            return new SandboxContext(Paths.get("").toAbsolutePath().normalize(), true);
+        }
+        Path root;
+        if (ws != null) {
+            root = Paths.get(sandboxRoot, "ws-" + ws.getId(),
+                    Boolean.TRUE.equals(ws.getSharedWorkdir()) ? "" : "session-" + sessionId)
+                    .toAbsolutePath().normalize();
+        } else {
+            root = Paths.get(sandboxRoot, "session-" + sessionId).toAbsolutePath().normalize();
+        }
+        Files.createDirectories(root);
+        return new SandboxContext(root, false);
+    }
+
+    /** 空间策略：该内置工具是否被禁用（disabledTools 逗号分隔；null/空=全部允许） */
+    private boolean isToolDisabled(Workspace ws, String name) {
+        if (ws == null || ws.getDisabledTools() == null || ws.getDisabledTools().trim().isEmpty()) {
+            return false;
+        }
+        for (String t : ws.getDisabledTools().split(",")) {
+            if (name.equals(t.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

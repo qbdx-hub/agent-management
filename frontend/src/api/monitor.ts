@@ -1,6 +1,6 @@
 import http from './index'
 import type { ApiResponse, PaginatedData } from '@/types/common'
-import type { MonitorOverview, TokenTrendPoint, AgentHealthItem, ErrorLogItem, AlertRule, AlertRecord } from '@/types/monitor'
+import type { MonitorOverview, TokenTrendPoint, AgentHealthItem, ErrorLogItem, AlertRule, AlertRecord, MonitorCharts } from '@/types/monitor'
 
 export async function getMonitorOverview(period: string = 'today'): Promise<ApiResponse<MonitorOverview>> {
   const res = await http.get<ApiResponse<MonitorOverview>>('/monitor/overview', { params: { period } })
@@ -44,5 +44,10 @@ export async function deleteAlertRule(ruleId: number): Promise<ApiResponse<null>
 
 export async function getAlertRecords(params: any): Promise<ApiResponse<PaginatedData<AlertRecord>>> {
   const res = await http.get<ApiResponse<PaginatedData<AlertRecord>>>('/monitor/alerts/records', { params })
+  return res.data
+}
+
+export async function getMonitorCharts(period: string = 'today'): Promise<ApiResponse<MonitorCharts>> {
+  const res = await http.get<ApiResponse<MonitorCharts>>('/monitor/charts', { params: { period } })
   return res.data
 }

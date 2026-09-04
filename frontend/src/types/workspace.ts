@@ -12,11 +12,12 @@ export interface WorkspaceSettings {
   /** 空间名称/描述（保存时随设置一起提交；读取走 workspace store） */
   name?: string
   description?: string
-  defaultModelProvider: string
-  sessionRetentionDays: number
-  autoArchiveDays: number
-  maxTokensPerTask: number
-  language: string
+  /** 共享工作目录：会话间共享文件区（否则每会话独立沙箱） */
+  sharedWorkdir: boolean
+  /** 允许沙箱外运行总闸 */
+  allowOutsideSandbox: boolean
+  /** 空间级禁用的内置工具名 */
+  disabledTools: string[]
 }
 
 export interface Member {

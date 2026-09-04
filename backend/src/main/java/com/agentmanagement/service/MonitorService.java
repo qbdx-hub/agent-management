@@ -15,6 +15,9 @@ public interface MonitorService {
     /** Token 用量趋势（24h 或 7d / 30d） */
     TokenTrendSummaryVO getTokenTrend(String period, String granularity);
 
+    /** 监控图表聚合（调用/错误趋势、费用趋势、Agent 调用分布、错误类型分布） */
+    MonitorChartsVO getCharts(String period);
+
     /** Agent 健康排行 */
     List<AgentHealthVO> getAgentHealth();
 

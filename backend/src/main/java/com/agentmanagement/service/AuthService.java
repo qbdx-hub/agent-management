@@ -5,6 +5,7 @@ import com.agentmanagement.form.RegisterForm;
 import com.agentmanagement.form.UserProfileForm;
 import com.agentmanagement.vo.LoginVO;
 import com.agentmanagement.vo.UserVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -36,6 +37,12 @@ public interface AuthService {
      * 密码修改需先校验旧密码。
      */
     void updateProfile(Long userId, UserProfileForm form);
+
+    /**
+     * 上传当前用户头像（multipart，≤2MB，jpg/png/webp/gif），
+     * 覆盖式存储到 {file.upload-dir}/avatars/，返回带版本参数的可访问 URL。
+     */
+    String uploadAvatar(Long userId, MultipartFile file);
 
     /**
      * 读取当前用户偏好（user.preferences JSON）。

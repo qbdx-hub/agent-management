@@ -24,6 +24,7 @@ import com.agentmanagement.vo.WorkspaceMemberVO;
 import com.agentmanagement.vo.WorkspaceSettingsVO;
 import com.agentmanagement.vo.WorkspaceVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -114,12 +116,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         ws.setDescription(form.getDescription());
         ws.setOwnerId(userId);
         ws.setStatus(1);
-        // 运行配置默认值（与空间设置页可改字段一致）
-        ws.setDefaultModelProvider("openai");
-        ws.setSessionRetentionDays(90);
-        ws.setAutoArchiveDays(30);
-        ws.setMaxTokensPerTask(100000L);
-        ws.setLanguage("zh-CN");
+        // 执行策略列走 DB 默认值（独立沙箱/禁沙箱外/工具全放行）
         ws.setCreatedAt(LocalDateTime.now());
         ws.setUpdatedAt(LocalDateTime.now());
         workspaceMapper.insert(ws);
@@ -147,42 +144,53 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public WorkspaceSettingsVO getSettings(Long workspaceId) {
         Workspace ws = requireMember(workspaceId);
         WorkspaceSettingsVO vo = new WorkspaceSettingsVO();
-        vo.setDefaultModelProvider(ws.getDefaultModelProvider());
-        vo.setSessionRetentionDays(ws.getSessionRetentionDays());
-        vo.setAutoArchiveDays(ws.getAutoArchiveDays());
-        vo.setMaxTokensPerTask(ws.getMaxTokensPerTask());
-        vo.setLanguage(ws.getLanguage());
+        vo.setName(ws.getName());
+        vo.setDescription(ws.getDescription());
+        vo.setSharedWorkdir(ws.getSharedWorkdir() != null && ws.getSharedWorkdir());
+        vo.setAllowOutsideSandbox(ws.getAllowOutsideSandbox() != null && ws.getAllowOutsideSandbox());
+        vo.setDisabledTools(splitDisabledTools(ws.getDisabledTools()));
         return vo;
     }
 
     @Override
     public void updateSettings(Long workspaceId, WorkspaceSettingsForm form) {
         requireMember(workspaceId);
-        Workspace ws = new Workspace();
-        ws.setId(workspaceId);
+        // UpdateWrapper 显式 set：disabledTools 需要能写回 NULL（updateById 默认跳过 null 字段，清空会失效）
+        LambdaUpdateWrapper<Workspace> uw = new LambdaUpdateWrapper<>();
+        uw.eq(Workspace::getId, workspaceId);
         if (StringUtils.hasText(form.getName())) {
-            ws.setName(form.getName());
+            uw.set(Workspace::getName, form.getName());
         }
         if (form.getDescription() != null) {
-            ws.setDescription(form.getDescription());
+            uw.set(Workspace::getDescription, form.getDescription());
         }
-        if (StringUtils.hasText(form.getDefaultModelProvider())) {
-            ws.setDefaultModelProvider(form.getDefaultModelProvider());
+        if (form.getSharedWorkdir() != null) {
+            uw.set(Workspace::getSharedWorkdir, form.getSharedWorkdir());
         }
-        if (StringUtils.hasText(form.getLanguage())) {
-            ws.setLanguage(form.getLanguage());
+        if (form.getAllowOutsideSandbox() != null) {
+            uw.set(Workspace::getAllowOutsideSandbox, form.getAllowOutsideSandbox());
         }
-        if (form.getSessionRetentionDays() != null) {
-            ws.setSessionRetentionDays(form.getSessionRetentionDays());
+        if (form.getDisabledTools() != null) {
+            // 空列表=全部允许，存 NULL；非法工具名直接忽略
+            List<String> valid = form.getDisabledTools().stream()
+                    .filter(StringUtils::hasText)
+                    .map(String::trim)
+                    .collect(Collectors.toList());
+            uw.set(Workspace::getDisabledTools, valid.isEmpty() ? null : String.join(",", valid));
         }
-        if (form.getAutoArchiveDays() != null) {
-            ws.setAutoArchiveDays(form.getAutoArchiveDays());
+        uw.set(Workspace::getUpdatedAt, LocalDateTime.now());
+        workspaceMapper.update(null, uw);
+    }
+
+    /** 逗号分隔的禁用工具名 → 列表（容错空串/空白） */
+    private List<String> splitDisabledTools(String disabledTools) {
+        if (!StringUtils.hasText(disabledTools)) {
+            return new ArrayList<>();
         }
-        if (form.getMaxTokensPerTask() != null) {
-            ws.setMaxTokensPerTask(form.getMaxTokensPerTask());
-        }
-        ws.setUpdatedAt(LocalDateTime.now());
-        workspaceMapper.updateById(ws);
+        return Arrays.stream(disabledTools.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
     }
 
     @Override

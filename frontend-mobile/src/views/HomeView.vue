@@ -8,9 +8,13 @@ import type { AgentSummary, MonitorOverview } from '@/types'
 import { formatTokens, timeAgo } from '@/utils/format'
 import { toast } from '@/utils/toast'
 import AppIcon from '@/components/AppIcon.vue'
+import AgentAvatar from '@/components/AgentAvatar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const auth = useAuthStore()
+const theme = useThemeStore()
 
 const overview = ref<MonitorOverview | null>(null)
 const agents = ref<AgentSummary[]>([])
@@ -65,12 +69,18 @@ onMounted(async () => {
             <div style="font-size: 12px; color: var(--text-2); margin-top: 4px">{{ subtitle }}</div>
           </div>
           <div
-            style="width: 36px; height: 36px; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; color: var(--text-1)"
+            style="width: 36px; height: 36px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-1)"
+            @click="theme.toggle()"
+          >
+            <AppIcon :name="theme.isDark ? 'sun' : 'moon'" :size="16" />
+          </div>
+          <div
+            style="width: 36px; height: 36px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-1)"
             @click="router.push({ name: 'notify' })"
           >
             <AppIcon name="bell" :size="16" />
           </div>
-          <div class="avatar sm">{{ auth.displayName.slice(0, 1) }}</div>
+          <UserAvatar size="sm" />
         </div>
 
         <!-- 蓝色渐变状态卡（对齐设计稿：大数字 + 分列统计） -->
@@ -109,7 +119,7 @@ onMounted(async () => {
           <span class="more" @click="router.push({ name: 'chat-list' })">查看全部</span>
         </div>
         <div v-for="a in agents" :key="a.id" class="agent-card" @click="router.push(`/chat/${a.id}`)">
-          <div class="avatar-ico" style="color: var(--brand); font-weight: 600">{{ a.name.slice(0, 1) }}</div>
+          <AgentAvatar :name="a.name" :avatar="a.avatar" />
           <div class="info">
             <div class="name">{{ a.name }}</div>
             <div class="meta">{{ a.config?.modelName || '未配置模型' }} · 活跃于 {{ timeAgo(a.updatedAt) }}</div>

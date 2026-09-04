@@ -243,6 +243,131 @@ public class MonitorServiceImpl implements MonitorService {
         return result;
     }
 
+    // ====== 图表聚合 ======
+
+    @Override
+    public MonitorChartsVO getCharts(String period) {
+        Long workspaceId = com.agentmanagement.security.SecurityUtils.currentWorkspaceId();
+
+        // 时间窗与桶粒度：today 按小时 24 桶，7d/30d 按天
+        boolean hourly = "today".equals(period);
+        int days = "30d".equals(period) ? 30 : 7;
+        LocalDateTime start = hourly ? LocalDate.now().atStartOfDay()
+                : LocalDate.now().minusDays(days - 1).atStartOfDay();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM-dd");
+
+        // 预建桶（无数据的桶补 0，保证横轴连续）
+        Map<String, MonitorChartsVO.CallTrendPoint> callBuckets = new LinkedHashMap<>();
+        Map<String, MonitorChartsVO.CostTrendPoint> costBuckets = new LinkedHashMap<>();
+        if (hourly) {
+            for (int h = 0; h < 24; h++) {
+                callBuckets.put(hourKey(h), newPoint(h + ":00"));
+                MonitorChartsVO.CostTrendPoint p = new MonitorChartsVO.CostTrendPoint();
+                p.setTime(h + ":00");
+                p.setCost(0.0);
+                costBuckets.put(hourKey(h), p);
+            }
+        } else {
+            for (LocalDate d = start.toLocalDate(); !d.isAfter(LocalDate.now()); d = d.plusDays(1)) {
+                String label = d.format(fmt);
+                callBuckets.put(label, newPoint(label));
+                MonitorChartsVO.CostTrendPoint p = new MonitorChartsVO.CostTrendPoint();
+                p.setTime(label);
+                p.setCost(0.0);
+                costBuckets.put(label, p);
+            }
+        }
+
+        List<CostRecord> costs = costRecordMapper.selectList(new LambdaQueryWrapper<CostRecord>()
+                .eq(CostRecord::getWorkspaceId, workspaceId)
+                .ge(CostRecord::getRecordedAt, start));
+        for (CostRecord r : costs) {
+            if (r.getRecordedAt() == null) {
+                continue;
+            }
+            String key = hourly ? hourKey(r.getRecordedAt().getHour()) : r.getRecordedAt().toLocalDate().format(fmt);
+            MonitorChartsVO.CallTrendPoint c = callBuckets.get(key);
+            if (c != null) {
+                c.setCalls(c.getCalls() + 1);
+            }
+            MonitorChartsVO.CostTrendPoint ct = costBuckets.get(key);
+            if (ct != null && r.getCost() != null) {
+                ct.setCost(ct.getCost() + r.getCost().doubleValue());
+            }
+        }
+
+        List<ErrorLog> errs = errorLogMapper.selectList(new LambdaQueryWrapper<ErrorLog>()
+                .eq(ErrorLog::getWorkspaceId, workspaceId)
+                .ge(ErrorLog::getOccurredAt, start));
+        for (ErrorLog e : errs) {
+            if (e.getOccurredAt() == null) {
+                continue;
+            }
+            String key = hourly ? hourKey(e.getOccurredAt().getHour()) : e.getOccurredAt().toLocalDate().format(fmt);
+            MonitorChartsVO.CallTrendPoint c = callBuckets.get(key);
+            if (c != null) {
+                c.setErrors(c.getErrors() + 1);
+            }
+        }
+
+        // Agent 调用分布 TOP5（cost_record 已冗余 agentName，无需回表）
+        Map<Long, MonitorChartsVO.AgentCallDist> byAgent = new LinkedHashMap<>();
+        for (CostRecord r : costs) {
+            if (r.getAgentId() == null) {
+                continue;
+            }
+            MonitorChartsVO.AgentCallDist d = byAgent.computeIfAbsent(r.getAgentId(), id -> {
+                MonitorChartsVO.AgentCallDist n = new MonitorChartsVO.AgentCallDist();
+                n.setAgentId(id);
+                n.setAgentName(r.getAgentName() != null ? r.getAgentName() : "Agent #" + id);
+                n.setCalls(0L);
+                n.setTokens(0L);
+                return n;
+            });
+            d.setCalls(d.getCalls() + 1);
+            d.setTokens(d.getTokens() + (r.getTotalTokens() != null ? r.getTotalTokens() : 0L));
+        }
+        List<MonitorChartsVO.AgentCallDist> topAgents = byAgent.values().stream()
+                .sorted(Comparator.comparingLong(MonitorChartsVO.AgentCallDist::getCalls).reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+
+        // 错误类型分布（按次数倒序，取 TOP6）
+        Map<String, Long> byType = new LinkedHashMap<>();
+        for (ErrorLog e : errs) {
+            byType.merge(e.getErrorType() != null ? e.getErrorType() : "UNKNOWN", 1L, Long::sum);
+        }
+        List<MonitorChartsVO.ErrorTypeDist> typeDist = byType.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(6)
+                .map(en -> {
+                    MonitorChartsVO.ErrorTypeDist d = new MonitorChartsVO.ErrorTypeDist();
+                    d.setErrorType(en.getKey());
+                    d.setCount(en.getValue());
+                    return d;
+                })
+                .collect(Collectors.toList());
+
+        MonitorChartsVO vo = new MonitorChartsVO();
+        vo.setCallTrend(new ArrayList<>(callBuckets.values()));
+        vo.setCostTrend(new ArrayList<>(costBuckets.values()));
+        vo.setAgentDistribution(topAgents);
+        vo.setErrorTypeDistribution(typeDist);
+        return vo;
+    }
+
+    private String hourKey(int h) {
+        return String.format("%02d", h);
+    }
+
+    private MonitorChartsVO.CallTrendPoint newPoint(String time) {
+        MonitorChartsVO.CallTrendPoint p = new MonitorChartsVO.CallTrendPoint();
+        p.setTime(time);
+        p.setCalls(0L);
+        p.setErrors(0L);
+        return p;
+    }
+
     // ====== Agent 健康排行 ======
 
     @Override
@@ -416,7 +541,8 @@ public class MonitorServiceImpl implements MonitorService {
                 .last("LIMIT " + pageSize + " OFFSET " + (page - 1) * pageSize);
 
         List<AlertRecord> records = alertRecordMapper.selectList(wrapper);
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+        // LocalDateTime 无时区信息，格式化带 XXX（offset）会抛 UnsupportedTemporalTypeException
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
         List<AlertRecordVO> result = new ArrayList<>();
         for (AlertRecord rec : records) {

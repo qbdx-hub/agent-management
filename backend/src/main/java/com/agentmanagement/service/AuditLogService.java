@@ -33,11 +33,11 @@ public interface AuditLogService extends IService<AuditLog> {
              String ipAddress, String userAgent);
 
     /**
-     * 查询工作空间下的审计日志列表（按时间倒序）。
+     * 查询当前账户在工作空间下的审计日志（账户隔离：仅返回操作者为当前登录用户的记录，按时间倒序）。
      *
      * @param workspaceId 工作空间 ID
      * @param limit       返回条数限制
      * @return 日志列表
      */
-    List<AuditLog> listByWorkspace(Long workspaceId, int limit);
+    List<AuditLog> listMyLogs(Long workspaceId, int limit);
 }

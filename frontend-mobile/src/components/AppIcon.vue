@@ -26,7 +26,7 @@ const ICONS: Record<string, { vb: string; body: string }> = {
   },
   back: {
     vb: '0 0 16 16',
-    body: '<path d="M10 3L5 8l5 5" stroke="#8C8C8C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    body: '<path d="M10 3L5 8l5 5" style="stroke: var(--text-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   },
   arrow: {
     vb: '0 0 14 14',
@@ -34,15 +34,15 @@ const ICONS: Record<string, { vb: string; body: string }> = {
   },
   search: {
     vb: '0 0 16 16',
-    body: '<circle cx="7" cy="7" r="5" stroke="#8C8C8C" stroke-width="1.5"/><path d="M11 11l3 3" stroke="#8C8C8C" stroke-width="1.5" stroke-linecap="round"/>',
+    body: '<circle cx="7" cy="7" r="5" style="stroke: var(--text-2)" stroke-width="1.5"/><path d="M11 11l3 3" style="stroke: var(--text-2)" stroke-width="1.5" stroke-linecap="round"/>',
   },
   send: {
     vb: '0 0 16 16',
-    body: '<path d="M2 8L14 2L10.5 14L8 9L2 8Z" fill="#fff"/>',
+    body: '<path d="M2 8L14 2L10.5 14L8 9L2 8Z" fill="currentColor"/>',
   },
   server: {
     vb: '0 0 18 18',
-    body: '<rect x="2" y="3" width="14" height="5" rx="1.5" fill="currentColor"/><rect x="2" y="10" width="14" height="5" rx="1.5" fill="currentColor"/><circle cx="5" cy="5.5" r="1" fill="#1F2937"/><circle cx="5" cy="12.5" r="1" fill="#1F2937"/>',
+    body: '<rect x="2" y="3" width="14" height="5" rx="1.5" fill="currentColor"/><rect x="2" y="10" width="14" height="5" rx="1.5" fill="currentColor"/><circle cx="5" cy="5.5" r="1" style="fill: var(--bg)"/><circle cx="5" cy="12.5" r="1" style="fill: var(--bg)"/>',
   },
   key: {
     vb: '0 0 16 16',
@@ -50,7 +50,7 @@ const ICONS: Record<string, { vb: string; body: string }> = {
   },
   sliders: {
     vb: '0 0 16 16',
-    body: '<path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="4" r="2" fill="#2A3B55" stroke="currentColor" stroke-width="1.5"/><circle cx="5" cy="8" r="2" fill="#2A3B55" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="12" r="2" fill="#2A3B55" stroke="currentColor" stroke-width="1.5"/>',
+    body: '<path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="4" r="2" style="fill: var(--card)" stroke="currentColor" stroke-width="1.5"/><circle cx="5" cy="8" r="2" style="fill: var(--card)" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="12" r="2" style="fill: var(--card)" stroke="currentColor" stroke-width="1.5"/>',
   },
   bell: {
     vb: '0 0 16 16',
@@ -59,6 +59,10 @@ const ICONS: Record<string, { vb: string; body: string }> = {
   moon: {
     vb: '0 0 16 16',
     body: '<path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" fill="currentColor"/>',
+  },
+  sun: {
+    vb: '0 0 16 16',
+    body: '<circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.2v1.7M8 13.1v1.7M1.2 8h1.7M13.1 8h1.7M3.3 3.3l1.2 1.2M11.5 11.5l1.2 1.2M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
   },
   help: {
     vb: '0 0 16 16',

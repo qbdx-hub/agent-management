@@ -48,10 +48,12 @@ public class AuditLogServiceImpl extends ServiceImpl<AuditLogMapper, AuditLog> i
     }
 
     @Override
-    public List<AuditLog> listByWorkspace(Long workspaceId, int limit) {
+    public List<AuditLog> listMyLogs(Long workspaceId, int limit) {
+        // 账户隔离：只返回当前登录用户自己的操作记录（2026-09-04 产品决策）
         return baseMapper.selectList(
                 new LambdaQueryWrapper<AuditLog>()
                         .eq(AuditLog::getWorkspaceId, workspaceId)
+                        .eq(AuditLog::getUserId, com.agentmanagement.security.SecurityUtils.currentUserId())
                         .orderByDesc(AuditLog::getCreatedAt)
                         .last("LIMIT " + limit));
     }

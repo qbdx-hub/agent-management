@@ -6,11 +6,9 @@ export const mockWorkspaces: WorkspaceItem[] = [
 ]
 
 export const mockWorkspaceSettings: WorkspaceSettings = {
-  defaultModelProvider: 'openai',
-  sessionRetentionDays: 90,
-  autoArchiveDays: 30,
-  maxTokensPerTask: 100000,
-  language: 'zh-CN',
+  sharedWorkdir: false,
+  allowOutsideSandbox: false,
+  disabledTools: [],
 }
 
 export const mockMembers: Member[] = [

@@ -3,22 +3,26 @@ package com.agentmanagement.vo;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
- * 空间设置 VO（对应 workspace 表的运行配置列）。
+ * 空间设置 VO（基本信息 + Agent 执行环境策略）。
  */
 @Data
 public class WorkspaceSettingsVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String defaultModelProvider;
+    private String name;
 
-    private Integer sessionRetentionDays;
+    private String description;
 
-    private Integer autoArchiveDays;
+    /** 共享工作目录：0-每会话独立沙箱，1-空间内会话共享文件区 */
+    private Boolean sharedWorkdir;
 
-    private Long maxTokensPerTask;
+    /** 允许沙箱外运行总闸 */
+    private Boolean allowOutsideSandbox;
 
-    private String language;
+    /** 空间级禁用的内置工具名 */
+    private List<String> disabledTools;
 }

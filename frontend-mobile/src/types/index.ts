@@ -224,10 +224,20 @@ export interface ModelCatalogItem {
   enabled: number
 }
 
+/** 修改个人信息表单（对齐后端 UserProfileForm，PUT /auth/profile；newPassword 为空表示不改密码） */
+export interface UserProfileForm {
+  username: string
+  nickname: string
+  email?: string
+  oldPassword?: string
+  newPassword?: string
+}
+
 /** 新建 Agent 表单（对齐后端 AgentCreateForm） */
 export interface AgentCreateForm {
   name: string
   description?: string
+  avatar?: string
   modelProvider?: string
   modelName?: string
   temperature?: number

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useAgentStore } from '@/stores/agent'
 import { sendMessageSse, getSessionList, stopSession } from '@/api/session'
+import { getWorkspaceSettings } from '@/api/workspace'
 import { EXECUTION_MODE_MAP } from '@/utils/constants'
 import { formatTokens, formatCost } from '@/utils/format'
 import type { Message, ExecutionStep, ExecutionMode } from '@/types/session'
@@ -19,6 +20,8 @@ const messagesRef = ref<HTMLElement | null>(null)
 const showSteps = ref(true)
 // 沙箱外运行授权：开启后本次页面内发送的消息，其文件/命令工具作用于服务器真实文件系统
 const outsideSandbox = ref(false)
+// 空间总闸：仅当空间设置开启「允许沙箱外运行」时才展示授权开关（后端同样拦截，双保险）
+const sandboxGateOpen = ref(false)
 let abortController: AbortController | null = null
 
 // 组件卸载时中止进行中的 SSE 请求，避免切页后轮询定时器与 XHR 继续运行（资源泄漏）
@@ -33,6 +36,11 @@ onUnmounted(() => {
 onMounted(async () => {
   // 切换 Agent 时清空旧会话
   sessionStore.clearSession()
+  // 空间未放开「沙箱外运行」总闸时不展示授权开关
+  try {
+    const res = await getWorkspaceSettings()
+    if (res.code === 0 && res.data) sandboxGateOpen.value = !!res.data.allowOutsideSandbox
+  } catch { /* 设置读取失败按禁止处理 */ }
   await agentStore.fetchAgentDetail(agentId.value)
   const sid = route.query.sessionId
   if (sid) {
@@ -289,6 +297,7 @@ function renderMarkdown(text: string): string {
       />
       <div class="input-actions">
         <el-tooltip
+          v-if="sandboxGateOpen"
           content="开启后 Agent 将在服务器真实文件系统执行文件读写与命令（支持绝对路径），不再限制在会话沙箱内，请谨慎授权"
           placement="top"
         >

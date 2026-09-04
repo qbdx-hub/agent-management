@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 
 /**
  * 工作空间表实体（对应 workspace 表）。
- * 登录只用 id + name，其余字段照建以备后续模块复用。
  */
 @Data
 @TableName("workspace")
@@ -29,22 +28,17 @@ public class Workspace implements Serializable {
 
     private Long ownerId;
 
-    private Integer maxAgents;
-
-    private Integer maxMembers;
-
     /** 状态：0-禁用 1-启用 */
     private Integer status;
 
-    private String defaultModelProvider;
+    /** 共享工作目录：0-每会话独立沙箱，1-空间内会话共享文件区 */
+    private Boolean sharedWorkdir;
 
-    private Integer sessionRetentionDays;
+    /** 允许沙箱外运行总闸：0-禁止成员授权逃逸沙箱，1-允许 */
+    private Boolean allowOutsideSandbox;
 
-    private Integer autoArchiveDays;
-
-    private Long maxTokensPerTask;
-
-    private String language;
+    /** 空间级禁用的内置工具名，逗号分隔；NULL/空=全部允许 */
+    private String disabledTools;
 
     private LocalDateTime createdAt;
 

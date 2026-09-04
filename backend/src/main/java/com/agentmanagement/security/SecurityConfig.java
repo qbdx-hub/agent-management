@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .authorizeRequests()
                 .antMatchers("/auth/login", "/auth/register").permitAll()
                 .antMatchers("/druid/**").permitAll()
+                // 头像等上传静态文件：<img> 无法携带 JWT，匿名可读
+                .antMatchers("/uploads/**").permitAll()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
                 .and()

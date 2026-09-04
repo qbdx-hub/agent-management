@@ -37,17 +37,33 @@ async function handleLogin() {
 
 <template>
   <div class="login-page">
-    <!-- 背景图 + 暗化遮罩 -->
+    <!-- 背景图（AI 家族蜡笔画）+ 中心柔光，保证卡片可读 -->
     <div class="bg-image"></div>
     <div class="bg-overlay"></div>
 
-    <!-- 居中毛玻璃登录卡片 -->
+    <!-- 居中亮色登录卡片 -->
     <div class="glass-card">
+      <!-- 蜡笔涂鸦装饰（取插画吉祥物色） -->
+      <svg class="doodle d-star" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3.2l2.5 5.1 5.6.8-4 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4-4 5.6-.8z" stroke="#e8c34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <svg class="doodle d-heart" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 20.5C7.3 16.3 3.5 13 3.5 9 3.5 6.4 5.5 4.5 7.8 4.5c1.7 0 3.2 1 4.2 2.5 1-1.5 2.5-2.5 4.2-2.5 2.3 0 4.3 1.9 4.3 4.5 0 4-3.8 7.3-8.5 11.5z" stroke="#e87a90" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <svg class="doodle d-spark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3.5c.5 4.6 3.9 8 8.5 8.5-4.6.5-8 3.9-8.5 8.5-.5-4.6-3.9-8-8.5-8.5 4.6-.5 8-3.9 8.5-8.5z" stroke="#e8973f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <svg class="doodle d-note" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9.5 17.5V6l9-1.8v11.3" stroke="#9b6bc3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="7" cy="17.5" r="2.4" stroke="#9b6bc3" stroke-width="2"/>
+        <circle cx="16" cy="15.5" r="2.4" stroke="#9b6bc3" stroke-width="2"/>
+      </svg>
+      <svg class="doodle d-wave" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 13c1.8-3.2 3.7-3.2 5.5 0s3.7 3.2 5.5 0 3.7-3.2 5.5 0" stroke="#4d8fd0" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+
       <div class="logo">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="48" height="48" rx="12" fill="rgba(255,255,255,0.18)"/>
-          <path d="M14 24L20 30L34 16" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <UiIcon name="robot" :size="30" />
       </div>
       <h1 class="title">Agent 管理系统</h1>
 
@@ -111,34 +127,36 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #ffffff;
 }
 
-/* 背景图全屏铺满 */
+/* 背景图全屏铺满（白底蜡笔画，cover 裁切白边无痕） */
 .bg-image {
   position: absolute;
   inset: 0;
-  background: url('/login-bg.png') center center / cover no-repeat;
+  background: url('/login-bg-ai.jpg') center center / cover no-repeat;
   transform: scale(1.02);
 }
 
-/* 暗化遮罩，让玻璃卡片更突出 */
+/* 中心柔光：卡片区域留白更干净，插画在四周保持可见 */
 .bg-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.35) 42%, rgba(255, 255, 255, 0) 72%);
 }
 
-/* 透明背景的玻璃卡片（保留模糊/边框/阴影，去掉白底色） */
+/* 亮色卡片：白底 + 描边 + 抬升阴影（V4 设计语言） */
 .glass-card {
   position: relative;
   z-index: 2;
   width: 400px;
   max-width: 90vw;
-  padding: 48px 40px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 44px 40px 40px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-1);
   border-radius: 24px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lift);
   animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -153,68 +171,83 @@ async function handleLogin() {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .glass-card {
+    animation: none;
+  }
+}
+
+/* 品牌块：与侧边栏 logo-mark 同款（accent-soft 底 + 机器人） */
 .logo {
   width: 56px;
   height: 56px;
   margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border-radius: 16px;
+  color: var(--accent);
 }
 
-.logo svg {
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+/* 蜡笔涂鸦：手绘线条小图，点缀卡片四角 */
+.doodle {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.d-star {
+  width: 35px;
+  top: 16px;
+  right: 240px;
+  transform: rotate(-14deg);
+}
+
+.d-heart {
+  width: 28px;
+  top: 58px;
+  right: 14px;
+  transform: rotate(16deg);
+}
+
+.d-spark {
+  width: 27px;
+  bottom: 26px;
+  left: 14px;
+  transform: rotate(10deg);
+}
+
+.d-note {
+  width: 32px;
+  bottom: 16px;
+  right: 26px;
+  transform: rotate(12deg);
+}
+
+.d-wave {
+  width: 40px;
+  top: 104px;
+  left: 12px;
+  transform: rotate(-6deg);
 }
 
 .title {
   text-align: center;
-  color: #ffffff;
+  color: var(--text-1);
   font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 36px;
-  letter-spacing: 1px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-
-/* 表单元素适配毛玻璃 */
-.login-form :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-  box-shadow: none;
-  padding: 4px 16px;
-  transition: all 0.25s;
-}
-
-.login-form :deep(.el-input__wrapper:hover) {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.login-form :deep(.el-input__wrapper.is-focus) {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-}
-
-.login-form :deep(.el-input__inner) {
-  color: #ffffff;
-  font-size: 15px;
-}
-
-.login-form :deep(.el-input__inner::placeholder) {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.login-form :deep(.el-input__prefix) {
-  color: rgba(255, 255, 255, 0.85);
+  font-weight: 800;
+  margin: 0 0 32px;
+  letter-spacing: 0.5px;
 }
 
 .input-icon {
   width: 16px;
   height: 16px;
+  color: var(--text-3);
 }
 
-/* 登录按钮 */
+/* 登录按钮（tokens.css 已把 EP primary 改绑为品牌色） */
 .login-btn {
   width: 100%;
   height: 48px;
@@ -222,16 +255,11 @@ async function handleLogin() {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 4px;
-  background: rgba(255, 255, 255, 0.95);
-  border: none;
-  color: #1e293b;
-  transition: all 0.25s;
+  margin-top: 4px;
 }
 
 .login-btn:hover {
-  background: #ffffff;
   transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
 }
 
 .login-btn:active {
@@ -243,15 +271,14 @@ async function handleLogin() {
   text-align: center;
   margin-top: 24px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-2);
 }
 
 .register-link {
-  color: #ffffff;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 600;
   margin-left: 4px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .register-link:hover {

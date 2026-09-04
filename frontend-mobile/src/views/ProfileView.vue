@@ -6,9 +6,13 @@ import { getTokenTrend } from '@/api/monitor'
 import { getCostOverview } from '@/api/cost'
 import { formatTokens } from '@/utils/format'
 import AppIcon from '@/components/AppIcon.vue'
+import ToggleSwitch from '@/components/ToggleSwitch.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const auth = useAuthStore()
+const theme = useThemeStore()
 const showLogout = ref(false)
 
 const monthTokens = ref<number | null>(null)
@@ -43,8 +47,8 @@ function logout() {
       <div class="pad" style="padding-top: calc(var(--safe-top) + 8px)">
         <div class="page-title" style="margin-bottom: 14px">我的</div>
 
-        <div class="profile-card">
-          <div class="avatar">{{ auth.displayName.slice(0, 1) }}</div>
+        <div class="profile-card" style="cursor: pointer" @click="router.push({ name: 'profile-edit' })">
+          <UserAvatar />
           <div style="flex: 1">
             <div style="font-size: 17px; font-weight: 700">{{ auth.displayName }}</div>
             <div style="font-size: 12px; color: var(--text-2); margin-top: 3px">
@@ -88,6 +92,13 @@ function logout() {
             <div class="menu-ico"><AppIcon name="help" :size="14" /></div>
             <span class="label">帮助与反馈</span>
             <div class="arrow"><AppIcon name="arrow" :size="13" /></div>
+          </div>
+          <div class="menu-row" @click="theme.toggle()">
+            <div class="menu-ico"><AppIcon :name="theme.isDark ? 'sun' : 'moon'" :size="14" /></div>
+            <span class="label">深色模式</span>
+            <span @click.stop>
+              <ToggleSwitch :model-value="theme.isDark" @update:model-value="theme.toggle()" />
+            </span>
           </div>
         </div>
 

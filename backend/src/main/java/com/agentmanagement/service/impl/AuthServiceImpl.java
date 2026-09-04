@@ -23,11 +23,15 @@ import com.agentmanagement.vo.WorkspaceBriefVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -336,6 +340,81 @@ public class AuthServiceImpl implements AuthService {
         }
         update.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(update);
+    }
+
+    // ==================== 头像上传 ====================
+
+    /** 头像大小上限 2MB */
+    private static final long AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+    /** 允许的图片 Content-Type → 扩展名 */
+    private static final Map<String, String> AVATAR_TYPES;
+    static {
+        Map<String, String> m = new HashMap<>();
+        m.put("image/jpeg", "jpg");
+        m.put("image/png", "png");
+        m.put("image/webp", "webp");
+        m.put("image/gif", "gif");
+        AVATAR_TYPES = Collections.unmodifiableMap(m);
+    }
+
+    /** 头像访问 URL 前缀（context-path /api/v1 + WebMvcConfig 静态映射 /uploads/**） */
+    private static final String AVATAR_URL_PREFIX = "/api/v1/uploads/avatars/";
+
+    @Value("${file.upload-dir:./uploads}")
+    private String uploadDir;
+
+    @Override
+    public String uploadAvatar(Long userId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "请选择头像图片");
+        }
+        String ext = AVATAR_TYPES.get(file.getContentType());
+        if (ext == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "仅支持 jpg/png/webp/gif 图片");
+        }
+        if (file.getSize() > AVATAR_MAX_BYTES) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "头像不能超过 2MB");
+        }
+
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND, "用户不存在");
+        }
+        String oldAvatar = user.getAvatar();
+
+        // 覆盖式命名 u{id}.{ext}，URL 后附版本参数防 <img> 缓存
+        String fileName = "u" + userId + "." + ext;
+        String version = String.valueOf(System.currentTimeMillis());
+        String url = AVATAR_URL_PREFIX + fileName + "?v=" + version;
+
+        File baseDir = new File(uploadDir, "avatars").getAbsoluteFile();
+        if (!baseDir.exists() && !baseDir.mkdirs()) {
+            throw new BusinessException(500, "头像目录创建失败");
+        }
+        File dest = new File(baseDir, fileName);
+        try {
+            java.nio.file.Files.write(dest.toPath(), file.getBytes());
+        } catch (IOException e) {
+            log.error("头像保存失败: {}", dest.getAbsolutePath(), e);
+            throw new BusinessException(500, "头像保存失败");
+        }
+
+        // 清理旧的异扩展名文件（同名覆盖已处理）
+        if (StringUtils.hasText(oldAvatar) && oldAvatar.startsWith(AVATAR_URL_PREFIX)) {
+            String oldName = oldAvatar.substring(AVATAR_URL_PREFIX.length()).split("\\?")[0];
+            if (!oldName.equals(fileName)) {
+                new File(baseDir, oldName).delete();
+            }
+        }
+
+        User update = new User();
+        update.setId(userId);
+        update.setAvatar(url);
+        update.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(update);
+        log.info("用户头像已更新: userId={} -> {}", userId, url);
+        return url;
     }
 
     @Override

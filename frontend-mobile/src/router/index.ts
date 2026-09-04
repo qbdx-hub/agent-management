@@ -7,6 +7,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/chat-list', name: 'chat-list', component: () => import('@/views/ChatListView.vue'), meta: { tabbar: true, title: '对话' } },
   { path: '/kb', name: 'kb', component: () => import('@/views/KbListView.vue'), meta: { tabbar: true, title: '知识库' } },
   { path: '/profile', name: 'profile', component: () => import('@/views/ProfileView.vue'), meta: { tabbar: true, title: '我的' } },
+  { path: '/profile/edit', name: 'profile-edit', component: () => import('@/views/ProfileEditView.vue'), meta: { title: '个人资料' } },
 
   // ---- 子页面（全屏，无 tabbar）----
   { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true, title: '登录' } },

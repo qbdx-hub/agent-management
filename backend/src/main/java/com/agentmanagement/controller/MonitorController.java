@@ -39,6 +39,12 @@ public class MonitorController {
         return Result.success(monitorService.getAgentHealth());
     }
 
+    /** GET /monitor/charts —— 图表聚合（调用/错误趋势、费用趋势、Agent 分布、错误类型分布） */
+    @GetMapping("/charts")
+    public Result<MonitorChartsVO> getCharts(@RequestParam("period") String period) {
+        return Result.success(monitorService.getCharts(period));
+    }
+
     /** GET /monitor/errors —— 错误日志列表 */
     @GetMapping("/errors")
     public Result<List<ErrorLogVO>> getErrorLogs(@RequestParam(value = "page", defaultValue = "1") Integer page,

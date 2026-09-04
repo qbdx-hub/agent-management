@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getAgentList } from '@/api/agent'
 import type { AgentSummary } from '@/types'
 import AppIcon from '@/components/AppIcon.vue'
+import AgentAvatar from '@/components/AgentAvatar.vue'
 
 const router = useRouter()
 const agents = ref<AgentSummary[]>([])
@@ -40,7 +41,7 @@ onMounted(async () => {
 
         <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px">
           <div v-for="a in filtered" :key="a.id" class="agent-card" @click="router.push(`/chat/${a.id}`)">
-            <div class="avatar-ico">{{ a.name.slice(0, 1) }}</div>
+            <AgentAvatar :name="a.name" :avatar="a.avatar" />
             <div class="info">
               <div class="name">{{ a.name }}</div>
               <div class="meta">{{ a.description || (a.config?.modelName || '开始新对话') }}</div>

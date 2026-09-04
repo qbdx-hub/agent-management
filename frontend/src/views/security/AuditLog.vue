@@ -76,6 +76,7 @@ function getResourceTypeLabel(type: string): string {
   <div class="audit-log-page" v-loading="loading">
     <div class="page-header">
       <h2>审计日志</h2>
+      <span class="text-muted" style="font-size:13px">仅展示我的操作记录</span>
     </div>
     <el-card shadow="never">
       <div class="toolbar">

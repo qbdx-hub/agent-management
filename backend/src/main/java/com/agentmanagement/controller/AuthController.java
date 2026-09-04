@@ -12,6 +12,7 @@ import com.agentmanagement.vo.UserVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.util.Map;
@@ -54,6 +55,14 @@ public class AuthController {
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         authService.updateProfile(userId, form);
         return Result.success();
+    }
+
+    /** POST /api/v1/auth/avatar —— 上传当前用户头像（multipart，≤2MB），返回可访问 URL */
+    @AuditLog(action = "user.avatar.upload", label = "上传头像", resourceType = "user")
+    @PostMapping("/avatar")
+    public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return Result.success(authService.uploadAvatar(userId, file));
     }
 
     /** GET /api/v1/auth/preferences —— 读取当前用户偏好（未设置时返回默认结构） */

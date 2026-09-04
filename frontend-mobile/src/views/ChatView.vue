@@ -7,6 +7,7 @@ import type { AgentDetail, Message } from '@/types'
 import { toast } from '@/utils/toast'
 import { formatTokens } from '@/utils/format'
 import AppIcon from '@/components/AppIcon.vue'
+import AgentAvatar from '@/components/AgentAvatar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,7 +135,7 @@ async function stop() {
     <div ref="scrollEl" class="scroll" style="padding: 8px 20px">
       <div class="chat-list">
         <div v-if="!messages.length" class="empty" style="margin-top: 30vh">
-          <div class="avatar-ico" style="margin: 0 auto 12px; width: 52px; height: 52px; font-size: 22px; color: var(--brand); font-weight: 600">{{ agent?.name?.slice(0, 1) || 'A' }}</div>
+          <AgentAvatar :name="agent?.name" :avatar="agent?.avatar" :size="52" style="margin: 0 auto 12px" />
           {{ agent?.description || '开始你的第一句提问' }}
         </div>
 

@@ -8,12 +8,14 @@ import type { ModelCatalogItem } from '@/types'
 import { toast } from '@/utils/toast'
 import AppIcon from '@/components/AppIcon.vue'
 import RangeSlider from '@/components/RangeSlider.vue'
+import { AGENT_ICONS, AVATAR_OPTIONS } from '@/components/agentIcons'
 
 const router = useRouter()
 const prefs = usePrefsStore()
 
 const name = ref('')
 const description = ref('')
+const avatar = ref('robot')
 const catalog = ref<ModelCatalogItem[]>([])
 const selectedModel = ref('')
 const temperature = ref(0.7)
@@ -53,6 +55,7 @@ async function submit() {
     const res = await createAgent({
       name: name.value.trim(),
       description: description.value.trim() || undefined,
+      avatar: avatar.value,
       modelProvider: m?.provider,
       modelName: m?.modelName,
       temperature: temperature.value,
@@ -86,6 +89,22 @@ onMounted(load)
         <div class="card" style="display: flex; flex-direction: column; gap: 12px">
           <input v-model="name" class="field" placeholder="Agent 名称（必填）" maxlength="100" />
           <textarea v-model="description" class="field area" rows="3" placeholder="描述这个 Agent 的职责（选填）" maxlength="500" />
+        </div>
+
+        <div class="group-label">头像图标</div>
+        <div class="card">
+          <div class="avatar-grid">
+            <button
+              v-for="opt in AVATAR_OPTIONS"
+              :key="opt"
+              type="button"
+              class="avatar-opt"
+              :class="{ sel: avatar === opt }"
+              @click="avatar = opt"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" v-html="AGENT_ICONS[opt] || ''" />
+            </button>
+          </div>
         </div>
 
         <div class="group-label">模型配置</div>
@@ -158,5 +177,25 @@ onMounted(load)
 }
 .field.area {
   line-height: 1.6;
+}
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+.avatar-opt {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: var(--comp);
+  color: var(--text-2);
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-opt.sel {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: var(--brand);
 }
 </style>

@@ -19,7 +19,7 @@ public class AuditLogController {
     private AuditLogService auditLogService;
 
     /**
-     * GET /api/v1/audit-logs —— 查询审计日志列表。
+     * GET /api/v1/audit-logs —— 查询审计日志列表（账户隔离：仅当前登录用户自己的记录）。
      *
      * @param workspaceId 工作空间 ID（请求头）
      * @param limit       返回条数，默认 50
@@ -28,6 +28,6 @@ public class AuditLogController {
     public Result<List<AuditLog>> list(
             @RequestHeader("X-Workspace-Id") Long workspaceId,
             @RequestParam(defaultValue = "50") int limit) {
-        return Result.success(auditLogService.listByWorkspace(workspaceId, limit));
+        return Result.success(auditLogService.listMyLogs(workspaceId, limit));
     }
 }

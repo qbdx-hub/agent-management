@@ -26,7 +26,7 @@ const active = computed(() => String(route.name || ''))
   <div class="tabbar">
     <router-link v-for="(t, i) in TABS" :key="t.name" :to="{ name: t.name }" class="tab" :class="{ active: active === t.name }">
       <svg width="18" height="18" viewBox="0 0 16 16">
-        <path :d="ICON_PATHS[i]" :fill="active === t.name ? '#fff' : 'none'" :stroke="active === t.name ? 'none' : '#8C8C8C'" stroke-width="1.4" stroke-linejoin="round" />
+        <path :d="ICON_PATHS[i]" :fill="active === t.name ? '#fff' : 'none'" :style="{ stroke: active === t.name ? 'none' : 'var(--text-2)' }" stroke-width="1.4" stroke-linejoin="round" />
       </svg>
       <span>{{ t.label }}</span>
     </router-link>

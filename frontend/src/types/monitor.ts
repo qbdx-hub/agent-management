@@ -21,6 +21,37 @@ export interface TokenTrendPoint {
   output: number
 }
 
+/** GET /monitor/charts 聚合图表 */
+export interface ChartsCallPoint {
+  time: string
+  calls: number
+  errors: number
+}
+
+export interface ChartsCostPoint {
+  time: string
+  cost: number
+}
+
+export interface AgentCallDistItem {
+  agentId: number
+  agentName: string
+  calls: number
+  tokens: number
+}
+
+export interface ErrorTypeDistItem {
+  errorType: string
+  count: number
+}
+
+export interface MonitorCharts {
+  callTrend: ChartsCallPoint[]
+  costTrend: ChartsCostPoint[]
+  agentDistribution: AgentCallDistItem[]
+  errorTypeDistribution: ErrorTypeDistItem[]
+}
+
 export interface CallTrendPoint {
   time: string
   count: number
