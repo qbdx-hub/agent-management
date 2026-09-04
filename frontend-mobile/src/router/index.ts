@@ -36,7 +36,7 @@ router.beforeEach((to) => {
   if (to.name === 'login' && auth.isLoggedIn) {
     return { name: 'home' }
   }
-  document.title = to.meta.title ? `${to.meta.title} · MyAgent` : 'MyAgent'
+  document.title = to.meta.title ? `${to.meta.title} · 灵枢agent` : '灵枢agent'
 })
 
 export default router

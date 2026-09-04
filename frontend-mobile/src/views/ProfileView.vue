@@ -109,7 +109,7 @@ function logout() {
           </div>
         </div>
 
-        <div class="version">MyAgent v1.0 · 移动端</div>
+        <div class="version">灵枢agent v1.0 · 移动端</div>
       </div>
     </div>
 

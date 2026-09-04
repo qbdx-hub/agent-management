@@ -48,7 +48,7 @@ function onSelect(path: string) {
   <div class="sidebar">
     <div class="sidebar-logo" :class="{ collapsed: appStore.sidebarCollapsed }">
       <span class="logo-mark"><UiIcon name="robot" :size="19" /></span>
-      <span v-if="!appStore.sidebarCollapsed" class="logo-text">Agent 管理</span>
+      <span v-if="!appStore.sidebarCollapsed" class="logo-text">灵枢agent</span>
     </div>
     <el-menu
       :default-active="activeMenu"

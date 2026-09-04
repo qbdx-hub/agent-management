@@ -70,7 +70,7 @@ function feedback() {
         <div v-if="!filtered.length" class="empty">没有匹配的问题</div>
 
         <button class="primary-btn" style="margin-top: 16px" @click="feedback">提交意见反馈</button>
-        <div class="version">MyAgent v1.0 (Build 20260902)</div>
+        <div class="version">灵枢agent v1.0 (Build 20260902)</div>
       </div>
     </div>
   </div>

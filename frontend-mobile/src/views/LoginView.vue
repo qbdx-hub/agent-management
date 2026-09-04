@@ -64,7 +64,7 @@ async function submit() {
         <div class="logo-row">
           <div class="logo"><AppIcon name="send" :size="24" /></div>
           <div>
-            <div class="page-title">MyAgent</div>
+            <div class="page-title">灵枢agent</div>
             <div style="font-size: 12px; color: var(--text-2); margin-top: 2px">智能体管理平台 · 移动端</div>
           </div>
         </div>
@@ -92,7 +92,7 @@ async function submit() {
           <AppIcon name="arrow" :size="11" />
         </div>
 
-        <div class="version">MyAgent v1.0 (Build 20260902)</div>
+        <div class="version">灵枢agent v1.0 (Build 20260902)</div>
       </div>
     </div>
   </div>

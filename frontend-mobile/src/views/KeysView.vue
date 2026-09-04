@@ -89,7 +89,7 @@ onMounted(load)
     <div class="scroll">
       <div class="pad" style="padding-top: 4px">
         <div class="tip-card">
-          密钥用于调用 MyAgent OpenAPI，请妥善保管，切勿泄露。<br />
+          密钥用于调用灵枢agent OpenAPI，请妥善保管，切勿泄露。<br />
           最多可创建 5 个密钥，泄露后请立即删除重建。
         </div>
 
