@@ -1,4 +1,4 @@
-# Agent 管理系统 - 实训知识库索引
+# 灵枢agent - 实训知识库索引
 
 本知识库包含云南民族大学软件工程项目综合实训的全部文档资料。
 
@@ -66,7 +66,7 @@
 
 ## 🔗 相关资源
 
-- **GitHub 仓库**: https://github.com/qbdx-hub/agent-management
+- **GitHub 仓库**: https://github.com/qbdx-hub/lingshu-agent
 - **前端地址**: http://localhost:5173
 - **后端地址**: http://localhost:8080
 

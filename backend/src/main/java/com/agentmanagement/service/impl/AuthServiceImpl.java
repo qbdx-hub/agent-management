@@ -344,8 +344,8 @@ public class AuthServiceImpl implements AuthService {
 
     // ==================== 头像上传 ====================
 
-    /** 头像大小上限 2MB */
-    private static final long AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+    /** 头像大小上限 10MB */
+    private static final long AVATAR_MAX_BYTES = 10 * 1024 * 1024;
 
     /** 允许的图片 Content-Type → 扩展名 */
     private static final Map<String, String> AVATAR_TYPES;
@@ -374,7 +374,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "仅支持 jpg/png/webp/gif 图片");
         }
         if (file.getSize() > AVATAR_MAX_BYTES) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "头像不能超过 2MB");
+            throw new BusinessException(ResultCode.PARAM_ERROR, "头像不能超过 10MB");
         }
 
         User user = userMapper.selectById(userId);

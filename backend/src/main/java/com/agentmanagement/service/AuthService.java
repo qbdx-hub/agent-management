@@ -39,7 +39,7 @@ public interface AuthService {
     void updateProfile(Long userId, UserProfileForm form);
 
     /**
-     * 上传当前用户头像（multipart，≤2MB，jpg/png/webp/gif），
+     * 上传当前用户头像（multipart，≤10MB，jpg/png/webp/gif），
      * 覆盖式存储到 {file.upload-dir}/avatars/，返回带版本参数的可访问 URL。
      */
     String uploadAvatar(Long userId, MultipartFile file);

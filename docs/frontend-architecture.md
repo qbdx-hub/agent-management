@@ -1,4 +1,4 @@
-# Agent 管理系统 — 前端架构设计
+# 灵枢agent — 前端架构设计
 
 > Vue 3 + TypeScript + Vite | 对应 PRD 全部 10 个模块
 
@@ -709,7 +709,7 @@ export function useSSE() {
 ```env
 # .env.development
 VITE_API_BASE_URL=http://localhost:8080
-VITE_APP_TITLE=Agent 管理系统
+VITE_APP_TITLE=灵枢agent
 ```
 
 ---

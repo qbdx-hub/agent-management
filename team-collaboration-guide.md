@@ -323,7 +323,7 @@ server:
 VITE_API_BASE_URL=http://localhost:8080
 
 # 应用标题
-VITE_APP_TITLE=Agent 管理系统
+VITE_APP_TITLE=灵枢agent
 ```
 
 ### 4.4 .gitignore

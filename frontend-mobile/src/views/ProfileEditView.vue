@@ -32,7 +32,7 @@ async function onFileChange(e: Event) {
   input.value = '' // 允许重复选择同一文件
   if (!file) return
   if (!file.type.startsWith('image/')) return toast('请选择图片文件', 'error')
-  if (file.size > 2 * 1024 * 1024) return toast('头像不能超过 2MB', 'error')
+  if (file.size > 10 * 1024 * 1024) return toast('头像不能超过 10MB', 'error')
 
   uploading.value = true
   try {
@@ -120,7 +120,7 @@ async function submit() {
             </div>
           </div>
           <div style="font-size: 12px; color: var(--text-2); margin-top: 8px">
-            {{ uploading ? '上传中…' : '点击更换头像 · jpg/png ≤ 2MB' }}
+            {{ uploading ? '上传中…' : '点击更换头像 · jpg/png ≤ 10MB' }}
           </div>
           <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none" @change="onFileChange" />
         </div>

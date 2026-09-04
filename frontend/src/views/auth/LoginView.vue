@@ -65,7 +65,7 @@ async function handleLogin() {
       <div class="logo">
         <UiIcon name="robot" :size="30" />
       </div>
-      <h1 class="title">Agent 管理系统</h1>
+      <h1 class="title">灵枢agent</h1>
 
       <el-form @submit.prevent="handleLogin" class="login-form">
         <el-form-item>

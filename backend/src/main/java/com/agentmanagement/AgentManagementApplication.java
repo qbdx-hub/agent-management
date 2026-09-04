@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Agent 管理系统后端启动类。
+ * 灵枢agent后端启动类。
  * 根包 com.agentmanagement，保证 @SpringBootApplication 默认扫描整个根包。
  * @MapperScan 必须显式指到 com.agentmanagement.mapper，否则 MyBatis-Plus 不注入 Mapper。
  * @EnableAsync 使 @Async（如文档向量化处理）真正异步执行，不阻塞 HTTP 请求线程。

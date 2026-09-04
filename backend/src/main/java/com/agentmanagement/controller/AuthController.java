@@ -57,7 +57,7 @@ public class AuthController {
         return Result.success();
     }
 
-    /** POST /api/v1/auth/avatar —— 上传当前用户头像（multipart，≤2MB），返回可访问 URL */
+    /** POST /api/v1/auth/avatar —— 上传当前用户头像（multipart，≤10MB），返回可访问 URL */
     @AuditLog(action = "user.avatar.upload", label = "上传头像", resourceType = "user")
     @PostMapping("/avatar")
     public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {

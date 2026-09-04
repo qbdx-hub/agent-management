@@ -1,4 +1,4 @@
-# Agent 管理系统 — API 接口文档
+# 灵枢agent — API 接口文档
 
 > Version: v1.0 | Base URL: `http://{host}:8080/api/v1` | Content-Type: `application/json`
 

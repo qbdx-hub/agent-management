@@ -52,7 +52,7 @@ export function setupGuards(router: Router) {
 
     // 设置页面标题
     if (to.meta.title) {
-      document.title = `${to.meta.title} - Agent 管理系统`
+      document.title = `${to.meta.title} - 灵枢agent`
     }
 
     next()
