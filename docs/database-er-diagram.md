@@ -18,7 +18,7 @@
 | `user` | 用户表 | id, username, password, email, status |
 | `role` | 角色表 | id, workspace_id, name, permissions(JSON) |
 | `user_role` | 用户角色关联表 | user_id, role_id, workspace_id |
-| `workspace` | 工作空间表 | id, name, owner_id, max_agents, max_members |
+| `workspace` | 工作空间表 | id, name, owner_id, shared_workdir, allow_outside_sandbox, disabled_tools |
 | `workspace_member` | 工作空间成员表 | workspace_id, user_id, role(owner/admin/member) |
 
 ### 2️⃣ Agent 管理模块（3张表）

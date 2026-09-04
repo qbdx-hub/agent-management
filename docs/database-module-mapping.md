@@ -237,16 +237,15 @@ Agent 回复完成 → 写入 message(role=assistant)
 | 前端页面 | 涉及表 | 说明 |
 |---------|--------|------|
 | TopHeader.vue (工作空间切换) | `workspace`、`workspace_member` | 下拉切换工作空间 |
-| WorkspaceSettings.vue | `workspace` | 修改名称/描述/设置、危险区（删除工作空间） |
+| WorkspaceSettings.vue | `workspace` | 名称/描述 + Agent 执行环境策略（共享目录/沙箱外总闸/工具禁用名单） |
 | MemberManage.vue | `workspace_member`、`user` | 成员表格 + 邀请弹窗 + 角色下拉 + 移除 |
 | DashboardView.vue (最近动态) | `activity_log` | 工作空间最近操作列表 |
 
-**工作空间设置字段（存在 workspace 表中）：**
-- `default_model_provider` — 默认模型提供商
-- `session_retention_days` — 会话保留天数
-- `auto_archive_days` — 自动归档天数
-- `max_tokens_per_task` — 单任务最大 Token
-- `language` — 语言
+**Agent 执行环境策略字段（2026-09-04 V12，存在 workspace 表中）：**
+- `shared_workdir` — 共享工作目录（0-每会话独立沙箱，1-空间内会话共享文件区）
+- `allow_outside_sandbox` — 「沙箱外运行」总闸（关闭时后端拒绝逃逸授权）
+- `disabled_tools` — 内置工具禁用名单（逗号分隔，NULL/空=全部允许）
+- 已废弃删除：default_model_provider / language / session_retention_days / auto_archive_days / max_tokens_per_task / max_agents / max_members
 
 ---
 

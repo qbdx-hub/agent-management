@@ -23,26 +23,26 @@
 
 ---
 
-## ⚠️ 实现状态总览（2026-09-02 校对）
+## ⚠️ 实现状态总览（2026-09-04 校对）
 
 本文档为**设计稿 + 实际实现的混合体**：大部分接口已实现，少数为早期设计稿未落地。以下表格逐节核对后端 Controller（前缀均为 `/api/v1`），**新改动请先对照此表再写代码**。
 
 | 章节 | 状态 | 说明 |
 |------|------|------|
 | 一、认证与鉴权 | ✅ 已实现 | `/auth/login` `/auth/register` `/auth/me` `/auth/profile`（无“修改密码”独立接口，改密码走 `/auth/profile`） |
-| 二、工作空间 | ✅ 已实现（部分为最小实现） | 列表/创建/设置/成员/活动流均有（`/workspaces`）；**2.3 更新空间信息并入 2.6 设置保存；2.4 删除工作空间未实现**；邀请成员为“系统内用户直接加入”，不发邮件 |
+| 二、工作空间 | ✅ 已实现（部分为最小实现） | 列表/创建/设置/成员/活动流均有（`/workspaces`）；**2.3 更新空间信息并入 2.6 设置保存；2.4 删除工作空间未实现**；2.5/2.6 设置已改版为「Agent 执行环境策略」（沙箱目录/共享工作目录/沙箱外总闸/内置工具禁用名单）；邀请成员为“系统内用户直接加入”，不发邮件 |
 | 三、Agent 管理 | ✅ 已实现 | 列表/创建/详情/更新/删除/状态；**3.7 复制 Agent 未实现**（前端亦无入口） |
 | 四、Agent 配置 | ⚠️ 合并实现 | 4.1/4.2/4.6/4.7/4.8 **没有独立路由**，统一走 `PUT /agents/{id}` 全量更新（前端各配置页共用）；**4.3 Prompt 版本历史、4.4 版本对比、4.5 回滚未实现**（agent_prompt_version 表已建，前端显示为空列表）；**4.9 模型供应商列表未实现**（前端内置常用列表） |
 | 五、工具管理 | ⚠️ 部分 | 列表/注册/详情/更新/删除/测试（5.6）/调用统计（5.9）已实现；**5.7、5.8 MCP 全部未实现**（仅 API 工具） |
-| 六、会话与执行 | ✅ 已实现（大部分） | 创建/列表/消息/SSE 流式（6.5）/停止（前端停止按钮已接通）/删除均有；**6.7 续接为预留空接口**（返回 success 无逻辑）；**6.8 导出会话未实现**；SSE 实际事件为 thinking/content/done/error，文档中的 tool_call/tool_result/message/token_usage 事件未实现 |
+| 六、会话与执行 | ✅ 已实现（大部分） | 创建/列表/停止/删除均有；**6.4 发送消息实际直接以 SSE 流式返回**（`POST /sessions/{id}/messages` 即事件流，无独立 GET /stream），支持 `outsideSandbox` 授权参数；SSE 实际事件为 thinking/content/tool_call/done/error（Function Calling 多轮，tool_call 含工具名/参数/成败/耗时）；**6.7 续接为预留空接口**；**6.8 导出会话未实现** |
 | 七、编排 | ✅ 已实现 | CRUD + 运行（7.5）+ 运行历史（7.6）+ 运行详情轮询（7.7）+ 审批（`POST /workflows/runs/{runId}/approve`，文档未列）；执行引擎支持 agent/tool/condition/approval 节点 |
 | 八、知识库 | ✅ 已实现（除 8.6） | 列表/创建/详情/删除、文档直传（≤50MB）/列表/删除、检索（8.7）、文档处理触发（`POST …/documents/{docId}/process`）；**8.6 分块预览未实现**（前端无入口）；分片上传三接口已废弃删除，一律直传 |
-| 九、监控与统计 | ✅ 已实现 | 总览/Token 趋势/健康排行/错误日志/告警规则 CRUD/告警记录；**9.3 调用量趋势未实现独立接口**（数据并入 9.1 总览）；告警由后端定时任务每分钟评估 |
+| 九、监控与统计 | ✅ 已实现 | 总览/Token 趋势/健康排行/**图表聚合（9.7 `GET /monitor/charts`）**/错误日志/告警规则 CRUD/告警记录；**9.3 调用量趋势未实现独立接口**（调用趋势并入 9.1 总览与 9.7 图表聚合）；告警由后端定时任务每分钟评估 |
 | 十、成本管理 | ✅ 已实现 | 总览/拆分/趋势/预算 CRUD/明细；预算超支熔断生效（错误码 2301，非文档写的 3001） |
-| 十一、安全与治理 | ⚠️ 部分 | 角色 CRUD（11.1/11.2）、审批列表/规则/操作（11.4-11.6）已实现（`/security/*`）；审计日志实际为 `GET /audit-logs`（独立控制器，支持 workspaceId+limit）；**11.7 API Key 管理未实现**（表已建） |
+| 十一、安全与治理 | ⚠️ 部分 | 角色 CRUD（11.1/11.2）、审批列表/规则/操作（11.4-11.6）已实现（`/security/*`）；审计日志实际为 `GET /audit-logs`（独立控制器，**2026-09-04 起强制账户隔离：仅返回当前登录人自己的记录**）；**11.7 API Key 管理未实现**（表已建） |
 | 十二、团队与成员 | ✅ 已实现 | 成员列表/邀请/改角色/移除/活动日志（`/workspaces/{id}/members`、`/activities`） |
 
-**已知未实现清单（一眼版）**：工作空间删除（2.4）、复制 Agent（3.7）、Prompt 版本历史/对比/回滚（4.3-4.5）、模型供应商列表（4.9，前端内置常用列表）、MCP（5.7/5.8）、会话续接（6.7，空接口）、导出会话（6.8）、调用量趋势独立接口（9.3）、文档分块预览（8.6）、API Key 管理（11.7）。
+**已知未实现清单（一眼版）**：工作空间删除（2.4）、复制 Agent（3.7）、Prompt 版本历史/对比/回滚（4.3-4.5）、模型供应商列表（4.9，前端内置常用列表）、MCP（5.7/5.8）、会话续接（6.7，空接口）、导出会话（6.8）、调用量趋势独立接口（9.3，由 9.7 图表聚合覆盖）、文档分块预览（8.6）、API Key 管理（11.7）。
 
 ---
 
@@ -243,24 +243,35 @@ DELETE /workspaces/{workspaceId}
 GET /workspaces/{workspaceId}/settings
 ```
 
+> 2026-09-04 改版：设置页重构为「基本信息 + Agent 执行环境策略」（对标 Claude Code 项目级权限模型），
+> 原 defaultModelProvider/language/sessionRetentionDays/autoArchiveDays/maxTokensPerTask 等字段已废弃删除（V12 迁移）。
+
 ```json
 {
   "data": {
-    "defaultModelProvider": "openai",
-    "sessionRetentionDays": 90,
-    "autoArchiveDays": 30,
-    "maxTokensPerTask": 100000,
-    "language": "zh-CN"
+    "name": "默认工作空间",
+    "description": "系统默认工作空间",
+    "sharedWorkdir": false,
+    "allowOutsideSandbox": false,
+    "disabledTools": []
   }
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| name / description | string | 空间基本信息 |
+| sharedWorkdir | boolean | 共享工作目录。false：每会话独立沙箱 `data/agent-workspaces/ws-{空间ID}/session-{会话ID}`；true：空间内会话共享文件区 `ws-{空间ID}/` |
+| allowOutsideSandbox | boolean | 「沙箱外运行」总闸。false 时后端拒绝所有 `outsideSandbox=true` 的工具调用（前端也隐藏授权开关，双保险） |
+| disabledTools | string[] | 空间级禁用的内置工具名单：`read_file` `write_file` `edit_file` `list_files` `search_files` `run_command` `web_search` `web_fetch`；空数组 = 全部允许 |
 
 ### 2.6 更新空间设置
 
 ```
 PUT /workspaces/{workspaceId}/settings
 ```
-— 请求体同 2.5 返回结构
+
+请求体同 2.5（全部字段可选；`disabledTools` 传空数组即恢复全部允许）。策略即时生效：下一次内置工具调用即按新策略拦截，被禁工具返回失败消息「空间策略已禁用该工具: {name}…」。
 
 ---
 
@@ -958,70 +969,63 @@ GET /sessions/{sessionId}/messages
 }
 ```
 
-### 6.4 发送消息 + 启动 Agent 执行
+### 6.4 发送消息 + 启动 Agent 执行（SSE 流式返回）⭐
 
 ```
-POST /sessions/{sessionId}/messages
+POST /sessions/{sessionId}/messages        （Content-Type 响应: text/event-stream）
 ```
+
+> ⚠️ **实际实现**：该接口**本身就是 SSE 事件流**（无独立 GET /stream）。前端直接消费本次 POST 的流；
+> 断开可用 AbortController，或调 6.6 停止执行。
+
+请求体：
 
 ```json
 {
-  "content": "帮我审查 https://github.com/xxx/pull/42",
+  "content": "帮我把沙箱里的报告整理成 summary.txt",
   "mode": "auto",
-  "attachments": []
+  "attachments": [],
+  "outsideSandbox": false
 }
 ```
 
-**返回（同步）：**
-```json
-{
-  "data": {
-    "messageId": 1,
-    "sessionId": 1001,
-    "role": "user",
-    "content": "帮我审查 https://github.com/xxx/pull/42",
-    "createdAt": "2026-07-14T14:30:01+08:00"
-  }
-}
-```
+| 字段 | 说明 |
+|------|------|
+| content | 用户消息内容（必填） |
+| mode | 执行模式，缺省用会话当前模式 |
+| attachments | 附件 ID 列表 |
+| outsideSandbox | 沙箱外运行授权。true 时本次消息的文件/命令内置工具作用于服务器真实文件系统（支持绝对路径）；**空间总闸 `allowOutsideSandbox=false` 时后端直接拒绝**，工具返回「空间策略未允许「沙箱外运行」…」，前端在总闸关闭时隐藏该开关 |
 
-> 前端收到 200 后，立即连接 SSE 流（见 6.5）
+**SSE 事件类型（实际实现）：**
 
-### 6.5 SSE 流式推送 Agent 执行过程 ⭐
-
-```
-GET /sessions/{sessionId}/stream
-```
-
-**SSE 事件类型：**
-
-> ⚠️ **实际实现**：后端实际推送的事件为 `thinking`（思考过程）、`content`（正文增量）、`done`（含真实 token 用量与费用）、`error`。下文示例中的 `tool_call`/`tool_result`/`tool_error`/`message`/`token_usage` 事件为早期设计，未实现。
+> `thinking`（阶段提示）、`content`（正文增量，逐 token）、`tool_call`（Function Calling 工具调用，含成败/耗时/结果摘要）、`done`（含真实 token 用量与费用）、`error`。
+> 模型可能多轮发起工具调用：每轮 tool_call 后结果以 role=tool 消息回传模型继续生成，直至直接作答。
 
 ```
 event: thinking
-data: {"stepId":1,"content":"我需要先获取 PR 的内容，然后逐文件分析","timestamp":"2026-07-14T14:30:02+08:00"}
+data: {"content":"正在思考..."}
+
+event: content
+data: {"content":"我先"}
 
 event: tool_call
-data: {"stepId":2,"toolName":"GitHub 获取 PR","toolIcon":"🐙","params":{"prUrl":"https://github.com/xxx/pull/42"},"timestamp":"2026-07-14T14:30:03+08:00"}
+data: {"stepId":"call_abc123","toolName":"list_files","params":{"path":"."},"success":true,"durationMs":12,"result":"共 3 项：\nreport.txt\n..."}
 
-event: tool_result
-data: {"stepId":2,"toolName":"GitHub 获取 PR","success":true,"result":{"files":["AuthService.java"],"additions":45},"durationMs":800,"timestamp":"2026-07-14T14:30:04+08:00"}
-
-event: tool_error
-data: {"stepId":4,"toolName":"代码静态分析","error":"连接超时","retrying":true,"timestamp":"2026-07-14T14:30:10+08:00"}
-
-event: thinking
-data: {"stepId":3,"content":"根据分析结果，AuthService.java 存在以下问题...","timestamp":"2026-07-14T14:30:07+08:00"}
-
-event: message
-data: {"messageId":2,"content":"审查完成，发现以下问题：\n\n## 严重问题\n1. ...","timestamp":"2026-07-14T14:30:20+08:00"}
-
-event: token_usage
-data: {"input":2500,"output":800,"total":3300,"cost":0.04}
+event: tool_call
+data: {"stepId":"call_def456","toolName":"run_command","params":{"command":"echo hi"},"success":false,"durationMs":2,"error":"空间策略已禁用该工具: run_command（空间管理员可在「空间设置 → Agent 执行环境」中调整）"}
 
 event: done
-data: {"messageId":2,"sessionStatus":"completed","totalSteps":4,"totalDurationMs":18000}
+data: {"messageId":102,"totalTokens":3300,"inputTokens":2500,"outputTokens":800,"cost":0.04,"sessionStatus":"completed"}
 ```
+
+| tool_call 事件字段 | 说明 |
+|------|------|
+| stepId | 模型返回的 tool_call id |
+| toolName / params | 工具名与入参 |
+| success | 执行成败（含被空间策略拒绝的情况） |
+| durationMs | 耗时（策略拦截约 1-3ms） |
+| result / error | 结果摘要或失败原因（超长截断） |
+| outsideSandbox | 用户授权沙箱外时为 true（前端展示「沙箱外」警示标） |
 
 ### 6.6 停止执行
 
@@ -1416,6 +1420,42 @@ GET /monitor/errors?page=1&pageSize=20&agentId=1&startDate=2026-07-01&endDate=20
 }
 ```
 
+### 9.7 监控图表聚合（2026-09-04 新增）
+
+```
+GET /monitor/charts?period=today|7d|30d
+```
+
+一次返回监控面板四组图表的数据（前端无需多次请求）：
+
+```json
+{
+  "data": {
+    "callTrend": [
+      { "time": "00", "calls": 12, "errors": 1 },
+      { "time": "01", "calls": 8, "errors": 0 }
+    ],
+    "costTrend": [
+      { "time": "00", "cost": 0.35 },
+      { "time": "01", "cost": 0.21 }
+    ],
+    "agentDistribution": [
+      { "agentId": 17, "agentName": "代码审查助手", "calls": 230, "tokens": 152000 }
+    ],
+    "errorTypeDistribution": [
+      { "errorType": "tool_error", "count": 4 },
+      { "errorType": "llm_error", "count": 1 }
+    ]
+  }
+}
+```
+
+**口径说明：**
+- `period=today` 按 24 小时分桶（time 为 "00"–"23"），7d/30d 按天分桶（time 为 MM-dd）
+- calls = cost_record 成功次数 + error_log 失败次数；cost = cost_record 费用求和
+- agentDistribution 取调用量 TOP5（agentName 为冗余字段）；errorTypeDistribution 取 TOP6
+- errorType 枚举：llm_error（模型调用错误）/ tool_error（工具执行错误）/ timeout（超时）/ network（网络异常）/ workflow（工作流错误）/ unknown（其他）
+
 ### 9.7 告警规则 CRUD
 
 ```
@@ -1621,8 +1661,11 @@ DELETE /security/roles/{roleId}
 ### 11.3 审计日志
 
 ```
-GET /security/audit-logs?page=1&pageSize=20&userId=&action=&resource=&startDate=&endDate=
+GET /audit-logs?page=1&pageSize=20&action=&resource=&startDate=&endDate=
 ```
+
+> ⚠️ **账户隔离（2026-09-04 起强制）**：接口忽略任何 userId 筛选，固定叠加 `user_id = 当前登录人`——
+> 每个账户只能看到自己的操作记录，不可见空间内他人日志。实际路由为独立控制器 `GET /audit-logs`（非 `/security/audit-logs`）。
 
 ```json
 {
