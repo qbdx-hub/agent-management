@@ -149,12 +149,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         vo.setSharedWorkdir(ws.getSharedWorkdir() != null && ws.getSharedWorkdir());
         vo.setAllowOutsideSandbox(ws.getAllowOutsideSandbox() != null && ws.getAllowOutsideSandbox());
         vo.setDisabledTools(splitDisabledTools(ws.getDisabledTools()));
+        vo.setMemberTerminalEnabled(ws.getMemberTerminalEnabled() == null || ws.getMemberTerminalEnabled());
         return vo;
     }
 
     @Override
     public void updateSettings(Long workspaceId, WorkspaceSettingsForm form) {
-        requireMember(workspaceId);
+        // 空间设置（含成员终端开关等安全策略）仅 owner/admin 可改，普通成员只读
+        requireAdmin(workspaceId);
         // UpdateWrapper 显式 set：disabledTools 需要能写回 NULL（updateById 默认跳过 null 字段，清空会失效）
         LambdaUpdateWrapper<Workspace> uw = new LambdaUpdateWrapper<>();
         uw.eq(Workspace::getId, workspaceId);
@@ -177,6 +179,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                     .map(String::trim)
                     .collect(Collectors.toList());
             uw.set(Workspace::getDisabledTools, valid.isEmpty() ? null : String.join(",", valid));
+        }
+        if (form.getMemberTerminalEnabled() != null) {
+            uw.set(Workspace::getMemberTerminalEnabled, form.getMemberTerminalEnabled());
         }
         uw.set(Workspace::getUpdatedAt, LocalDateTime.now());
         workspaceMapper.update(null, uw);
@@ -306,6 +311,19 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "工作空间不存在");
         }
         return ws;
+    }
+
+    /** 空间设置等管理操作：当前用户必须是该空间的 owner/admin（成员资格由 requireMember 校验） */
+    private void requireAdmin(Long workspaceId) {
+        requireMember(workspaceId);
+        WorkspaceMember member = workspaceMemberMapper.selectOne(new LambdaQueryWrapper<WorkspaceMember>()
+                .eq(WorkspaceMember::getWorkspaceId, workspaceId)
+                .eq(WorkspaceMember::getUserId, SecurityUtils.currentUserId())
+                .last("LIMIT 1"));
+        String role = member == null ? null : member.getRole();
+        if (!"owner".equals(role) && !"admin".equals(role)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "仅空间所有者/管理员可修改空间设置");
+        }
     }
 
     private WorkspaceMember requireMembership(Long workspaceId, Long userId) {

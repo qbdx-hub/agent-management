@@ -42,7 +42,7 @@
 | 十、成本管理 | ✅ 已实现 | 总览/拆分/趋势/预算 CRUD/明细；预算超支熔断生效（错误码 2301，非文档写的 3001） |
 | 十一、安全与治理 | ⚠️ 部分 | 角色 CRUD（11.1/11.2）、审批列表/规则/操作（11.4-11.6）已实现（`/security/*`）；审计日志实际为 `GET /audit-logs`（独立控制器，**2026-09-04 起强制账户隔离：仅返回当前登录人自己的记录**）；**11.7 API Key 管理未实现**（表已建） |
 | 十二、团队与成员 | ✅ 已实现 | 成员列表/邀请/改角色/移除/活动日志（`/workspaces/{id}/members`、`/activities`） |
-| 十三、移动端终端 | ✅ 已实现 | `GET /terminal/info`、`POST /terminal/exec`（2026-09-05 新增）；沙箱内执行（`agent.sandbox.root/ws-{id}/`），仅空间 owner/admin；30s 超时、2 万字符输出上限、每用户并发 1、全量审计（`terminal.exec`）；`cd` 服务端特判，cwd 状态由客户端持有 |
+| 十三、移动端终端 | ✅ 已实现 | `GET /terminal/info`、`POST /terminal/exec`（2026-09-05 新增）；沙箱内执行（`agent.sandbox.root/ws-{id}/`），owner/admin 直通、member 受空间成员终端开关（默认开放）；30s 超时、2 万字符输出上限、每用户并发 1、全量审计（`terminal.exec`）；`cd` 服务端特判，cwd 状态由客户端持有 |
 
 **已知未实现清单（一眼版）**：工作空间删除（2.4）、复制 Agent（3.7）、Prompt 版本历史/对比/回滚（4.3-4.5）、模型供应商列表（4.9，前端内置常用列表）、MCP（5.7/5.8）、会话续接（6.7，空接口）、导出会话（6.8）、调用量趋势独立接口（9.3，由 9.7 图表聚合覆盖）、文档分块预览（8.6）、API Key 管理（11.7）。
 
@@ -255,7 +255,8 @@ GET /workspaces/{workspaceId}/settings
     "description": "系统默认工作空间",
     "sharedWorkdir": false,
     "allowOutsideSandbox": false,
-    "disabledTools": []
+    "disabledTools": [],
+    "memberTerminalEnabled": true
   }
 }
 ```
@@ -266,12 +267,15 @@ GET /workspaces/{workspaceId}/settings
 | sharedWorkdir | boolean | 共享工作目录。false：每会话独立沙箱 `data/agent-workspaces/ws-{空间ID}/session-{会话ID}`；true：空间内会话共享文件区 `ws-{空间ID}/` |
 | allowOutsideSandbox | boolean | 「沙箱外运行」总闸。false 时后端拒绝所有 `outsideSandbox=true` 的工具调用（前端也隐藏授权开关，双保险） |
 | disabledTools | string[] | 空间级禁用的内置工具名单：`read_file` `write_file` `edit_file` `list_files` `search_files` `run_command` `web_search` `web_fetch`；空数组 = 全部允许 |
+| memberTerminalEnabled | boolean | 成员终端开关（2026-09-05 新增，V13）：空间成员是否可用移动端终端，默认 true=开放；false 时终端仅 owner/admin 可用 |
 
 ### 2.6 更新空间设置
 
 ```
 PUT /workspaces/{workspaceId}/settings
 ```
+
+> 2026-09-05 起**仅 owner/admin 可调用**（成员终端等安全策略由管理员统一管控，普通成员只读），否则 `1003`。
 
 请求体同 2.5（全部字段可选；`disabledTools` 传空数组即恢复全部允许）。策略即时生效：下一次内置工具调用即按新策略拦截，被禁工具返回失败消息「空间策略已禁用该工具: {name}…」。
 
@@ -1893,7 +1897,7 @@ GET /workspaces/{workspaceId}/activities?page=1&pageSize=20
 > 2026-09-05 新增。移动端「终端」快捷入口的后端支撑：在**当前工作空间的沙箱目录**内执行 shell 命令（Windows→`cmd /c`，Linux→`/bin/sh -c`），真实回显 stdout+stderr。
 >
 > **安全模型**（RCE 通道，防线依次为）：
-> 1. 仅空间 **owner/admin** 可用（普通成员/非成员一律拒绝）；
+> 1. 角色闸：**owner/admin** 直通；**member** 受空间「成员终端开关」控制（`workspace.member_terminal_enabled`，默认 1=开放，PC 端空间设置可关；关闭时成员 `1003`）。空间设置仅 owner/admin 可改（`PUT /workspaces/{id}/settings`）；
 > 2. 沙箱铁笼：固定 `agent.sandbox.root/ws-{workspaceId}/`（共享工作区层），`cwd` 参数 normalize 后必须仍在沙箱根内，绝对路径与 `..` 穿越一律 `1001`；
 > 3. 30s 硬超时（`destroyForcibly`，孙进程可能残留，JDK8 已知边界）；输出上限 2 万字符（`truncated=true`）；命令长度 ≤500；
 > 4. 每用户并发闸：同时只允许 1 条命令在执行（否则 `1003`「上一条命令仍在执行中」）;
@@ -1910,11 +1914,12 @@ GET /workspaces/{workspaceId}/activities?page=1&pageSize=20
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | os | string | 服务器操作系统名（如 `Windows 11`），前端据此切换 dir/ls 快捷命令 |
-| role | string | 当前用户在该空间的成员角色（owner/admin） |
+| role | string | 当前用户在该空间的成员角色（owner/admin/member） |
 | sandboxPath | string | 沙箱目录显示名（`ws-{workspaceId}`） |
+| memberTerminalEnabled | boolean | 空间是否对成员开放终端（owner/admin 不受限） |
 
 ```json
-{ "code": 0, "message": "success", "data": { "os": "Windows 11", "role": "owner", "sandboxPath": "ws-1" } }
+{ "code": 0, "message": "success", "data": { "os": "Windows 11", "role": "owner", "sandboxPath": "ws-1", "memberTerminalEnabled": true } }
 ```
 
 ### 13.2 执行命令
@@ -1947,7 +1952,7 @@ GET /workspaces/{workspaceId}/activities?page=1&pageSize=20
 
 | 场景 | code | message 示例 |
 |------|------|------|
-| 普通成员/非 owner-admin | 1003 | 终端仅空间所有者/管理员可用 |
+| 空间关闭了成员终端 | 1003 | 空间管理员未开放成员终端，可在 PC 端空间设置中开启 |
 | 并发冲突 | 1003 | 上一条命令仍在执行中，请稍候 |
 | cwd 绝对路径 | 1001 | cwd 必须是沙箱内相对路径 |
 | cwd/`cd` 目标穿越沙箱 | 1001 | 路径越界，仅限沙箱内: `../../` |

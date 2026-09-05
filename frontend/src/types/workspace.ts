@@ -18,6 +18,8 @@ export interface WorkspaceSettings {
   allowOutsideSandbox: boolean
   /** 空间级禁用的内置工具名 */
   disabledTools: string[]
+  /** 成员终端开关：空间成员是否可用移动端终端（owner/admin 不受限） */
+  memberTerminalEnabled: boolean
 }
 
 export interface Member {

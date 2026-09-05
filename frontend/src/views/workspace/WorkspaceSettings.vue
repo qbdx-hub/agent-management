@@ -13,6 +13,7 @@ const settings = reactive<WorkspaceSettings>({
   sharedWorkdir: false,
   allowOutsideSandbox: false,
   disabledTools: [],
+  memberTerminalEnabled: true,
 })
 const form = reactive({ name: '', description: '' })
 const loading = ref(false)
@@ -55,6 +56,7 @@ async function load() {
         sharedWorkdir: !!res.data.sharedWorkdir,
         allowOutsideSandbox: !!res.data.allowOutsideSandbox,
         disabledTools: res.data.disabledTools || [],
+        memberTerminalEnabled: res.data.memberTerminalEnabled !== false,
       })
     }
     form.name = wsStore.current?.name || ''
@@ -77,6 +79,7 @@ async function handleSave() {
       sharedWorkdir: settings.sharedWorkdir,
       allowOutsideSandbox: settings.allowOutsideSandbox,
       disabledTools: settings.disabledTools,
+      memberTerminalEnabled: settings.memberTerminalEnabled,
     })
     if (res.code === 0) {
       ElMessage.success('设置已保存')
@@ -108,6 +111,20 @@ onMounted(load)
         <el-form label-width="140px" style="max-width:600px">
           <el-form-item label="空间名称"><el-input v-model="form.name" placeholder="空间名称" /></el-form-item>
           <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" placeholder="空间描述" /></el-form-item>
+        </el-form>
+      </el-card>
+
+      <!-- 成员权限 -->
+      <el-card shadow="never" class="mb-24">
+        <template #header><span>成员权限</span></template>
+        <el-form label-width="140px" style="max-width:820px">
+          <el-form-item label="允许成员用终端">
+            <el-switch v-model="settings.memberTerminalEnabled" />
+            <span class="switch-label">{{ settings.memberTerminalEnabled ? '已开放' : '仅管理员' }}</span>
+            <div class="field-hint" :class="{ 'hint-danger': !settings.memberTerminalEnabled }">
+              开启后空间成员可在移动端「终端」执行命令（沙箱内、30s 超时、全程审计）；关闭则仅空间所有者/管理员可用
+            </div>
+          </el-form-item>
         </el-form>
       </el-card>
 

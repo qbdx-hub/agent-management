@@ -6,7 +6,8 @@ import AppIcon from '@/components/AppIcon.vue'
 
 /**
  * 移动端命令终端：命令在服务器的工作空间沙箱目录（agent.sandbox.root/ws-{id}/）内执行。
- * cwd 状态由前端持有、每次请求回传（服务端无状态）；仅空间 owner/admin 可用，执行全量审计。
+ * cwd 状态由前端持有、每次请求回传（服务端无状态）；owner/admin 直通，
+ * member 受空间「成员终端开关」（PC 端空间设置）控制，执行全量审计。
  * 终端固定深色（GitHub Dark 色板），不随应用主题切换。
  */
 
@@ -26,6 +27,7 @@ const running = ref(false)
 const os = ref('')
 const role = ref('')
 const sandboxPath = ref('')
+const memberTerminalEnabled = ref(true)
 const showBanner = ref(!sessionStorage.getItem('term_banner'))
 const scrollEl = ref<HTMLElement>()
 
@@ -43,6 +45,16 @@ const chips = computed(() =>
     : ['ls -la', 'pwd', 'cat /etc/os-release', 'ifconfig', 'java -version', 'df -h'],
 )
 const shortCwd = computed(() => (cwd.value ? `~/${cwd.value}` : `~/${sandboxPath.value || 'sandbox'}`))
+
+/** 横幅里的可用性说明：随角色与空间「成员终端开关」变化 */
+const accessNote = computed(() => {
+  if (role.value === 'owner') return '；你以空间所有者身份使用'
+  if (role.value === 'admin') return '；你以空间管理员身份使用'
+  if (role.value === 'member') {
+    return memberTerminalEnabled.value ? '；本空间已对成员开放终端' : '；空间管理员未开放成员终端'
+  }
+  return ''
+})
 
 function push(kind: LineKind, text: string) {
   lines.value.push({ id: ++seq, kind, text })
@@ -121,6 +133,7 @@ onMounted(async () => {
       os.value = res.data.os
       role.value = res.data.role
       sandboxPath.value = res.data.sandboxPath
+      memberTerminalEnabled.value = res.data.memberTerminalEnabled !== false
       push('sys', `已连接 ${res.data.sandboxPath} · ${res.data.os} · ${res.data.role}`)
     }
   } catch {
@@ -142,7 +155,7 @@ onMounted(async () => {
       <div v-if="showBanner" class="term-banner">
         <div class="b-title">服务器沙箱终端</div>
         <div class="b-body">
-          命令在服务器 <b>~/{{ sandboxPath }}</b> 目录内执行，30s 超时，全程审计；仅空间所有者/管理员可用。
+          命令在服务器 <b>~/{{ sandboxPath }}</b> 目录内执行，30s 超时，全程审计{{ accessNote }}。
         </div>
         <div class="b-close" @click="dismissBanner">知道了</div>
       </div>

@@ -25,4 +25,7 @@ public class WorkspaceSettingsVO implements Serializable {
 
     /** 空间级禁用的内置工具名 */
     private List<String> disabledTools;
+
+    /** 成员终端开关：空间成员是否可用移动端终端 */
+    private Boolean memberTerminalEnabled;
 }

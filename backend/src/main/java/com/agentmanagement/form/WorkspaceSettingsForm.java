@@ -24,4 +24,7 @@ public class WorkspaceSettingsForm {
 
     /** 空间级禁用的内置工具名（null 表示不修改；空列表=全部允许） */
     private List<String> disabledTools;
+
+    /** 成员终端开关：空间成员是否可用移动端终端（null 表示不修改） */
+    private Boolean memberTerminalEnabled;
 }

@@ -20,4 +20,7 @@ public class TerminalInfoVO implements Serializable {
 
     /** 沙箱目录显示名（ws-{workspaceId}） */
     private String sandboxPath;
+
+    /** 空间是否对成员开放终端（owner/admin 不受此开关限制） */
+    private Boolean memberTerminalEnabled;
 }

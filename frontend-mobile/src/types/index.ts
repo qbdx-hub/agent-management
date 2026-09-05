@@ -249,6 +249,8 @@ export interface TerminalInfo {
   os: string
   role: string
   sandboxPath: string
+  /** 空间是否对成员开放终端（owner/admin 不受限） */
+  memberTerminalEnabled: boolean
 }
 
 /** POST /terminal/exec —— 命令执行结果（timedOut 仍为 code=0，前端按系统行渲染） */

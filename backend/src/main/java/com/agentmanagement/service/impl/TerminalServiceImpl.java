@@ -2,8 +2,10 @@ package com.agentmanagement.service.impl;
 
 import com.agentmanagement.common.BusinessException;
 import com.agentmanagement.common.ResultCode;
+import com.agentmanagement.entity.Workspace;
 import com.agentmanagement.entity.WorkspaceMember;
 import com.agentmanagement.form.TerminalExecForm;
+import com.agentmanagement.mapper.WorkspaceMapper;
 import com.agentmanagement.mapper.WorkspaceMemberMapper;
 import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.TerminalService;
@@ -24,8 +26,9 @@ import java.util.concurrent.Semaphore;
 
 /**
  * 终端实现。这是平台首个用户直连的命令执行通道（RCE 通道），防线依次为：
- * 成员资格校验 → owner/admin 角色闸 → 每用户单飞闸 → 沙箱路径铁笼 →
- * 30s 硬超时 + 2 万字符输出上限 + 命令长度校验 → @AuditLog 全量审计（含 failure）。
+ * 成员资格校验 → 角色闸（owner/admin 直通；member 受空间「成员终端开关」控制）→
+ * 每用户单飞闸 → 沙箱路径铁笼 → 30s 硬超时 + 2 万字符输出上限 + 命令长度校验 →
+ * @AuditLog 全量审计（含 failure）。
  * 不做命令黑名单（易漏），越界一律拒绝。
  */
 @Service
@@ -40,6 +43,9 @@ public class TerminalServiceImpl implements TerminalService {
     @Autowired
     private WorkspaceMemberMapper workspaceMemberMapper;
 
+    @Autowired
+    private WorkspaceMapper workspaceMapper;
+
     @Value("${agent.sandbox.root:data/agent-workspaces}")
     private String sandboxRoot;
 
@@ -48,19 +54,20 @@ public class TerminalServiceImpl implements TerminalService {
 
     @Override
     public TerminalInfoVO info() {
-        WorkspaceMember member = requireAdminMember();
+        WorkspaceMember member = requireTerminalMember();
         Path root = wsRoot(currentWorkspaceId());
         TerminalInfoVO vo = new TerminalInfoVO();
         vo.setOs(System.getProperty("os.name", ""));
         vo.setRole(member.getRole());
         vo.setSandboxPath(root.getFileName() != null ? root.getFileName().toString() : "ws");
+        vo.setMemberTerminalEnabled(memberTerminalEnabled());
         return vo;
     }
 
     @Override
     public TerminalExecVO exec(TerminalExecForm form) {
         Long wsId = currentWorkspaceId();
-        requireAdminMember();
+        requireTerminalMember();
 
         Semaphore permit = singleFlight.computeIfAbsent(SecurityUtils.currentUserId(), k -> new Semaphore(1));
         if (!permit.tryAcquire()) {
@@ -141,8 +148,11 @@ public class TerminalServiceImpl implements TerminalService {
 
     // ==================== 辅助 ====================
 
-    /** 当前用户必须是目标空间的成员，且角色为 owner/admin（终端是 RCE 通道，不对普通成员开放） */
-    private WorkspaceMember requireAdminMember() {
+    /**
+     * 终端准入：当前用户必须是目标空间成员；owner/admin 直通，
+     * member 需空间「成员终端开关」开启（NULL 视为开启，与列默认值 1 口径一致）。
+     */
+    private WorkspaceMember requireTerminalMember() {
         WorkspaceMember member = workspaceMemberMapper.selectOne(
                 new LambdaQueryWrapper<WorkspaceMember>()
                         .eq(WorkspaceMember::getWorkspaceId, currentWorkspaceId())
@@ -153,10 +163,16 @@ public class TerminalServiceImpl implements TerminalService {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "工作空间不存在");
         }
         String role = member.getRole();
-        if (!"owner".equals(role) && !"admin".equals(role)) {
-            throw new BusinessException(ResultCode.FORBIDDEN, "终端仅空间所有者/管理员可用");
+        if ("member".equals(role) && !memberTerminalEnabled()) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "空间管理员未开放成员终端，可在 PC 端空间设置中开启");
         }
         return member;
+    }
+
+    /** 当前空间的成员终端开关（owner/admin 不受此开关限制） */
+    private boolean memberTerminalEnabled() {
+        Workspace ws = workspaceMapper.selectById(currentWorkspaceId());
+        return ws == null || ws.getMemberTerminalEnabled() == null || ws.getMemberTerminalEnabled();
     }
 
     /** 终端沙箱根：agent.sandbox.root/ws-{workspaceId}（共享工作区层，绝不允许沙箱外） */

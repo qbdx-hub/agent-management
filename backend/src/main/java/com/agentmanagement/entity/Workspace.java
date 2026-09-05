@@ -40,6 +40,9 @@ public class Workspace implements Serializable {
     /** 空间级禁用的内置工具名，逗号分隔；NULL/空=全部允许 */
     private String disabledTools;
 
+    /** 成员终端开关：0-移动端终端仅 owner/admin 可用，1-空间成员均可用（默认放开） */
+    private Boolean memberTerminalEnabled;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
