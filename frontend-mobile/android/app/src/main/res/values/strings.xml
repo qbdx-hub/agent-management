@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">灵枢agent</string>
+    <string name="title_activity_main">灵枢agent</string>
+    <string name="package_name">com.lingshu.agent</string>
+    <string name="custom_url_scheme">com.lingshu.agent</string>
+</resources>

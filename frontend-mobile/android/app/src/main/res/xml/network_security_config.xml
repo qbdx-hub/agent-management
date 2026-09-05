@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 放行云端后端 47.94.144.140 的明文 HTTP（测试版；正式版上 HTTPS 后可移除）。
+     配合 capacitor.config.json 的 allowMixedContent:true，确保 APK WebView 能访问 http API。 -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">47.94.144.140</domain>
+        <domain includeSubdomains="false">10.7.17.154</domain>
+    </domain-config>
+</network-security-config>
