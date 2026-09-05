@@ -243,3 +243,20 @@ export interface AgentCreateForm {
   temperature?: number
   maxTokens?: number
 }
+
+/** GET /terminal/info —— 终端环境信息 */
+export interface TerminalInfo {
+  os: string
+  role: string
+  sandboxPath: string
+}
+
+/** POST /terminal/exec —— 命令执行结果（timedOut 仍为 code=0，前端按系统行渲染） */
+export interface TerminalExecResult {
+  output: string
+  exitCode: number
+  durationMs: number
+  cwd: string
+  truncated: boolean
+  timedOut: boolean
+}

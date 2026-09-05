@@ -8,6 +8,7 @@ import com.agentmanagement.mapper.WorkspaceMapper;
 import com.agentmanagement.service.ToolService;
 import com.agentmanagement.service.builtin.BuiltinToolResult;
 import com.agentmanagement.service.builtin.BuiltinToolService;
+import com.agentmanagement.util.ShellExec;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -347,44 +348,12 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
             return BuiltinToolResult.fail("command 不能为空");
         }
         int timeoutMs = Math.min(intOf(params.get("timeout_ms"), 30_000), 120_000);
-        Path root = ctx.root;
 
-        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        ProcessBuilder pb = windows
-                ? new ProcessBuilder("cmd.exe", "/c", command)
-                : new ProcessBuilder("/bin/sh", "-c", command);
-        pb.directory(root.toFile());
-        pb.redirectErrorStream(true);
-
-        StringBuilder out = new StringBuilder();
-        Process process = pb.start();
-        // 子进程输出按系统默认字符集解码（中文 Windows 的 cmd.exe 输出 GBK，按 UTF-8 会乱码）
-        java.nio.charset.Charset outputCharset = java.nio.charset.Charset.defaultCharset();
-        Thread drainer = new Thread(() -> {
-            try (InputStream in = process.getInputStream()) {
-                byte[] buf = new byte[4096];
-                int n;
-                while ((n = in.read(buf)) != -1) {
-                    if (out.length() < MAX_OUTPUT_CHARS) {
-                        out.append(new String(buf, 0, n, outputCharset));
-                    }
-                }
-            } catch (IOException ignored) {
-                // 进程被终止时流关闭属正常
-            }
-        });
-        drainer.setDaemon(true);
-        drainer.start();
-
-        boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
-        if (!finished) {
-            process.destroyForcibly();
-            drainer.join(1000);
-            return BuiltinToolResult.fail("命令超过 " + timeoutMs + "ms 已强制终止。已捕获输出：\n" + abbreviate(out.toString(), 2000));
+        ShellExec.Result r = ShellExec.exec(command, ctx.root, timeoutMs, MAX_OUTPUT_CHARS);
+        if (r.timedOut) {
+            return BuiltinToolResult.fail("命令超过 " + timeoutMs + "ms 已强制终止。已捕获输出：\n" + abbreviate(r.output, 2000));
         }
-        drainer.join(2000);
-        String output = abbreviate(out.toString().trim(), MAX_OUTPUT_CHARS);
-        return BuiltinToolResult.ok("exit=" + process.exitValue() + "\n" + (output.isEmpty() ? "（无输出）" : output));
+        return BuiltinToolResult.ok("exit=" + r.exitCode + "\n" + (r.output.isEmpty() ? "（无输出）" : r.output));
     }
 
     // ==================== Web 工具 ====================

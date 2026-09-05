@@ -6,7 +6,6 @@ import { getMonitorOverview } from '@/api/monitor'
 import { useAuthStore } from '@/stores/auth'
 import type { AgentSummary, MonitorOverview } from '@/types'
 import { formatTokens, timeAgo } from '@/utils/format'
-import { toast } from '@/utils/toast'
 import AppIcon from '@/components/AppIcon.vue'
 import AgentAvatar from '@/components/AgentAvatar.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -31,7 +30,7 @@ const subtitle = computed(() => `${runningCount.value} 个 Agent 正在运行`)
 const QUICK_ACTIONS = [
   { label: '新建 Agent', icon: 'plus', act: () => router.push({ name: 'agent-create' }) },
   { label: '上传文件', icon: 'upload', act: () => router.push({ name: 'kb' }) },
-  { label: '终端', icon: 'terminal', act: () => toast('移动端暂未开放终端') },
+  { label: '终端', icon: 'terminal', act: () => router.push({ name: 'terminal' }) },
   { label: '更多', icon: 'dots', act: () => router.push({ name: 'profile' }) },
 ] as const
 

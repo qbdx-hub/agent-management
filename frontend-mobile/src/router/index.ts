@@ -18,6 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/models', name: 'models', component: () => import('@/views/ModelsView.vue'), meta: { title: '模型与偏好' } },
   { path: '/notify', name: 'notify', component: () => import('@/views/NotifyView.vue'), meta: { title: '通知设置' } },
   { path: '/help', name: 'help', component: () => import('@/views/HelpView.vue'), meta: { title: '帮助' } },
+  { path: '/terminal', name: 'terminal', component: () => import('@/views/TerminalView.vue'), meta: { title: '终端' } },
 
   { path: '/', redirect: '/home' },
   { path: '/:pathMatch(.*)*', redirect: '/home' },
