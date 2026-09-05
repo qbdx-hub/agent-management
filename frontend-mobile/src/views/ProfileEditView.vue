@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { updateProfile, uploadAvatar } from '@/api/auth'
+import { resolveFileUrl } from '@/utils/file'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/utils/toast'
 import AppIcon from '@/components/AppIcon.vue'
@@ -17,7 +18,7 @@ const form = reactive({
   newPassword: '',
 })
 
-const avatarUrl = ref(auth.user?.avatar || '')
+const avatarUrl = ref(resolveFileUrl(auth.user?.avatar))
 const uploading = ref(false)
 const saving = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -37,7 +38,8 @@ async function onFileChange(e: Event) {
   uploading.value = true
   try {
     const res = await uploadAvatar(file)
-    avatarUrl.value = res.data // 服务端返回带版本参数的 URL，天然防缓存
+    // 服务端返回带版本参数的相对 URL，天然防缓存；补全 API 源供 <img> 直接加载
+    avatarUrl.value = resolveFileUrl(res.data)
     await auth.refreshUser()
     toast('头像已更新')
   } catch {
