@@ -13,7 +13,8 @@ export async function createSession(agentId: number, data: { title?: string; exe
 }
 
 export async function getSessionDetail(sessionId: number): Promise<ApiResponse<SessionDetail>> {
-  const res = await http.get<ApiResponse<SessionDetail>>(`/sessions/${sessionId}`)
+  // 历史回放的真实端点是 /sessions/{id}/messages（GET），/sessions/{id} 不存在
+  const res = await http.get<ApiResponse<SessionDetail>>(`/sessions/${sessionId}/messages`)
   return res.data
 }
 
@@ -52,13 +53,22 @@ export function sendMessageSse(
     let currentEvent = ''
     let settled = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
+    // 行缓冲：网络包可能把一行 SSE 从中间切断，半行留到下一轮拼接，
+    // 否则前半行 JSON.parse 失败被丢弃、后半行缺前缀被忽略 → 丢字
+    let lineBuf = ''
 
-    function processNewData() {
+    function processNewData(flush = false) {
       const text = xhr.responseText
       if (text.length <= lastProcessedIndex) return
-      const newPart = text.substring(lastProcessedIndex)
+      lineBuf += text.substring(lastProcessedIndex)
       lastProcessedIndex = text.length
-      for (const line of newPart.split('\n')) {
+      const lines = lineBuf.split('\n')
+      lineBuf = flush ? '' : (lines.pop() ?? '')
+      if (flush && lines.length === 0 && lineBuf) {
+        lines.push(lineBuf)
+        lineBuf = ''
+      }
+      for (const line of lines) {
         const trimmed = line.trim()
         if (trimmed.startsWith('event:')) {
           currentEvent = trimmed.substring(6).trim()
@@ -83,7 +93,7 @@ export function sendMessageSse(
     }
 
     xhr.onload = () => {
-      processNewData()
+      processNewData(true) // 冲刷行缓冲
       settle(() => {
         if (xhr.status >= 200 && xhr.status < 300) resolve()
         else reject(new Error(`HTTP ${xhr.status}`))

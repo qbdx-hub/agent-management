@@ -66,15 +66,23 @@ export function sendMessageSse(
     let currentEvent = ''
     let settled = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
+    // 行缓冲：网络包可能把一行 SSE 从中间切断，半行留到下一轮拼接，
+    // 否则前半行 JSON.parse 失败被丢弃、后半行缺前缀被忽略 → 丢字
+    let lineBuf = ''
 
-    function processNewData() {
+    function processNewData(flush = false) {
       const text = xhr.responseText
       if (text.length <= lastProcessedIndex) return
 
-      const newPart = text.substring(lastProcessedIndex)
+      lineBuf += text.substring(lastProcessedIndex)
       lastProcessedIndex = text.length
 
-      const lines = newPart.split('\n')
+      const lines = lineBuf.split('\n')
+      lineBuf = flush ? '' : (lines.pop() ?? '')
+      if (flush && lines.length === 0 && lineBuf) {
+        lines.push(lineBuf)
+        lineBuf = ''
+      }
       for (const line of lines) {
         const trimmed = line.trim()
         if (trimmed.startsWith('event:')) {
@@ -84,10 +92,9 @@ export function sendMessageSse(
           if (jsonStr) {
             try {
               const parsed = JSON.parse(jsonStr)
-              console.log('[SSE]', currentEvent || 'message', parsed)
               onEvent(currentEvent || 'message', parsed)
             } catch {
-              // 解析失败跳过
+              // 解析失败跳过（如心跳）
             }
           }
         }
@@ -99,7 +106,7 @@ export function sendMessageSse(
 
     xhr.onload = () => {
       if (pollTimer) clearInterval(pollTimer)
-      processNewData() // 处理剩余数据
+      processNewData(true) // 处理剩余数据（冲刷行缓冲）
       if (!settled) {
         settled = true
         if (xhr.status >= 200 && xhr.status < 300) {

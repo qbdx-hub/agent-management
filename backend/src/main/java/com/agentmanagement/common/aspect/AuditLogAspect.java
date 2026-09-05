@@ -4,8 +4,10 @@ import com.agentmanagement.common.Result;
 import com.agentmanagement.common.annotation.AuditLog;
 import com.agentmanagement.entity.ActivityLog;
 import com.agentmanagement.entity.User;
+import com.agentmanagement.entity.WorkspaceMember;
 import com.agentmanagement.mapper.ActivityLogMapper;
 import com.agentmanagement.mapper.UserMapper;
+import com.agentmanagement.mapper.WorkspaceMemberMapper;
 import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.AuditLogService;
 import com.agentmanagement.vo.LoginVO;
@@ -42,6 +44,9 @@ public class AuditLogAspect {
     @Autowired
     private ActivityLogMapper activityLogMapper;
 
+    @Autowired
+    private WorkspaceMemberMapper workspaceMemberMapper;
+
     /** userId -> 显示名 缓存，避免每次审计都查库 */
     private final ConcurrentHashMap<Long, String> userNameCache = new ConcurrentHashMap<Long, String>();
 
@@ -63,7 +68,17 @@ public class AuditLogAspect {
     private void safeRecord(ProceedingJoinPoint pjp, AuditLog auditLog, Object result, boolean success) {
         try {
             Long userId = SecurityUtils.currentUserIdSafe();
-            Long workspaceId = SecurityUtils.currentWorkspaceIdSafe();
+            Long wsFromCtx = SecurityUtils.currentWorkspaceIdSafe();
+            Long workspaceId = wsFromCtx;
+            if (userId == null) {
+                // 登录时 SecurityContext 尚无认证信息：从返回值 LoginVO 取 userId
+                userId = userIdFromResult(result);
+            }
+            if (workspaceId == null && userId != null) {
+                // 登录/登出等动作没有空间上下文：审计回退到用户所属的第一个空间，
+                // 否则 audit_log.workspace_id（NOT NULL 无默认值）写入失败
+                workspaceId = firstWorkspaceIdOf(userId);
+            }
             String userName = resolveUserName(userId, result);
             String[] resource = resolveResource(result, pjp.getArgs());
             Long resourceId = parseLong(resource[0]);
@@ -82,7 +97,8 @@ public class AuditLogAspect {
                     ip, userAgent);
 
             // 同步写入工作空间活动流（空间「动态」页数据源）；审计已有 audit_log，活动流只记成功操作
-            if (workspaceId != null && success) {
+            // 活动流仍以请求上下文中的空间为准（登录等无上下文动作不进空间动态）
+            if (wsFromCtx != null && success) {
                 ActivityLog activity = new ActivityLog();
                 activity.setWorkspaceId(workspaceId);
                 activity.setUserId(userId);
@@ -98,6 +114,30 @@ public class AuditLogAspect {
             // 审计失败绝不影响业务
             log.error("审计日志记录失败: action={}", auditLog.action(), e);
         }
+    }
+
+    /** login 等场景 SecurityContext 无认证信息时，从返回值 LoginVO.user.id 取操作者 */
+    private Long userIdFromResult(Object result) {
+        if (result instanceof Result) {
+            Object data = ((Result<?>) result).getData();
+            if (data instanceof LoginVO) {
+                Object user = ((LoginVO) data).getUser();
+                if (user != null) {
+                    return parseLong(readGetter(user, "id"));
+                }
+            }
+        }
+        return null;
+    }
+
+    /** 用户所属的第一个空间（按 id 最小），用于无空间上下文动作的审计归属 */
+    private Long firstWorkspaceIdOf(Long userId) {
+        WorkspaceMember m = workspaceMemberMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WorkspaceMember>()
+                        .eq(WorkspaceMember::getUserId, userId)
+                        .orderByAsc(WorkspaceMember::getWorkspaceId)
+                        .last("LIMIT 1"));
+        return m != null ? m.getWorkspaceId() : null;
     }
 
     /** 操作者显示名：优先缓存，其次查库；login 成功时从返回值兜底 */
