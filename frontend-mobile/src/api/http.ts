@@ -6,7 +6,9 @@ import { useAuthStore } from '@/stores/auth'
 const http = axios.create({
   baseURL: (import.meta.env.VITE_API_BASE_URL || '') + '/api/v1',
   timeout: 30_000,
-  headers: { 'Content-Type': 'application/json' },
+  // 注意：不要设默认 Content-Type —— 实例默认 JSON 头会让 FormData 上传
+  // 携带错误的请求头（无 multipart boundary）导致后端 500；
+  // axios 对普通 JSON 对象会自动设置 application/json
 })
 
 // 请求拦截器：Bearer token + 工作空间上下文（后端要求 X-Workspace-Id）
