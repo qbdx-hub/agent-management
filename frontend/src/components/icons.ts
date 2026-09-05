@@ -72,6 +72,25 @@ import iCalendar from '~icons/tabler/calendar'
 import iVideo from '~icons/tabler/video'
 import iMail from '~icons/tabler/mail'
 import iQrcode from '~icons/tabler/qrcode'
+// 工具市场（V14 内置工具扩容）
+import iCalculator from '~icons/tabler/calculator'
+import iBinary from '~icons/tabler/binary'
+import iDice from '~icons/tabler/dice'
+import iClock from '~icons/tabler/clock'
+import iRepeat from '~icons/tabler/repeat'
+import iRegex from '~icons/tabler/regex'
+import iCode from '~icons/tabler/code'
+import iHash from '~icons/tabler/hash'
+import iTable from '~icons/tabler/table'
+import iGitCompare from '~icons/tabler/git-compare'
+import iFolderPlus from '~icons/tabler/folder-plus'
+import iArrowsLeftRight from '~icons/tabler/arrows-left-right'
+import iCopy from '~icons/tabler/copy'
+import iPackage from '~icons/tabler/package'
+import iApi from '~icons/tabler/api'
+import iCloud from '~icons/tabler/cloud'
+import iServer from '~icons/tabler/server'
+import iLink from '~icons/tabler/link'
 
 export const I: Record<string, Component> = {
   // 界面
@@ -91,6 +110,11 @@ export const I: Record<string, Component> = {
   laptop: iLaptop, star: iStar, heart: iHeart, flask: iFlask, palette: iPalette,
   plane: iPlane, pencil: iPencil, notebook: iNotebook, bookmark: iBookmark,
   checklist: iChecklist, calendar: iCalendar, video: iVideo, mail: iMail, qrcode: iQrcode,
+  // 工具市场（V14 内置工具扩容）
+  calculator: iCalculator, binary: iBinary, dice: iDice, clock: iClock, repeat: iRepeat,
+  regex: iRegex, code: iCode, hash: iHash, table: iTable, 'git-compare': iGitCompare,
+  'folder-plus': iFolderPlus, 'arrows-left-right': iArrowsLeftRight, copy: iCopy,
+  package: iPackage, api: iApi, cloud: iCloud, server: iServer, link: iLink,
 }
 
 /** 兜底图标：未知值渲染为 robot */

@@ -8,6 +8,10 @@ import com.agentmanagement.mapper.WorkspaceMapper;
 import com.agentmanagement.service.ToolService;
 import com.agentmanagement.service.builtin.BuiltinToolResult;
 import com.agentmanagement.service.builtin.BuiltinToolService;
+import com.agentmanagement.service.builtin.handler.CalcHandlers;
+import com.agentmanagement.service.builtin.handler.FileHandlers;
+import com.agentmanagement.service.builtin.handler.NetHandlers;
+import com.agentmanagement.service.builtin.handler.TextHandlers;
 import com.agentmanagement.util.ShellExec;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -23,8 +27,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -141,6 +143,112 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
                         break;
                     case "web_fetch":
                         result = webFetch(params);
+                        break;
+                    // ==================== 计算与时间（CalcHandlers） ====================
+                    case "calculator":
+                        result = CalcHandlers.calculator(params);
+                        break;
+                    case "unit_convert":
+                        result = CalcHandlers.unitConvert(params);
+                        break;
+                    case "number_base_convert":
+                        result = CalcHandlers.numberBaseConvert(params);
+                        break;
+                    case "random_generator":
+                        result = CalcHandlers.randomGenerator(params);
+                        break;
+                    case "loan_calc":
+                        result = CalcHandlers.loanCalc(params);
+                        break;
+                    case "color_convert":
+                        result = CalcHandlers.colorConvert(params);
+                        break;
+                    case "current_time":
+                        result = CalcHandlers.currentTime(params);
+                        break;
+                    case "date_calculator":
+                        result = CalcHandlers.dateCalculator(params);
+                        break;
+                    case "timestamp_convert":
+                        result = CalcHandlers.timestampConvert(params);
+                        break;
+                    case "cron_next":
+                        result = CalcHandlers.cronNext(params);
+                        break;
+                    // ==================== 文本与编码（TextHandlers） ====================
+                    case "text_stats":
+                        result = TextHandlers.textStats(params);
+                        break;
+                    case "text_transform":
+                        result = TextHandlers.textTransform(params);
+                        break;
+                    case "regex_tool":
+                        result = TextHandlers.regexTool(params);
+                        break;
+                    case "base64_codec":
+                        result = TextHandlers.base64Codec(params);
+                        break;
+                    case "hash_calculator":
+                        result = TextHandlers.hashCalculator(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "url_codec":
+                        result = TextHandlers.urlCodec(params);
+                        break;
+                    case "json_tool":
+                        result = TextHandlers.jsonTool(params);
+                        break;
+                    case "csv_json_convert":
+                        result = TextHandlers.csvJsonConvert(params);
+                        break;
+                    case "text_diff":
+                        result = TextHandlers.textDiff(params);
+                        break;
+                    // ==================== 文件操作（FileHandlers，沙箱铁笼内） ====================
+                    case "create_dir":
+                        result = FileHandlers.createDir(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "delete_path":
+                        result = FileHandlers.deletePath(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "move_path":
+                        result = FileHandlers.movePath(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "copy_path":
+                        result = FileHandlers.copyPath(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "file_info":
+                        result = FileHandlers.fileInfo(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "zip_pack":
+                        result = FileHandlers.zipPack(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "zip_unpack":
+                        result = FileHandlers.zipUnpack(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    // ==================== 网络查询与通知（NetHandlers） ====================
+                    case "http_request":
+                        result = NetHandlers.httpRequest(params);
+                        break;
+                    case "weather_forecast":
+                        result = NetHandlers.weatherForecast(params);
+                        break;
+                    case "ip_lookup":
+                        result = NetHandlers.ipLookup(params);
+                        break;
+                    case "dns_lookup":
+                        result = NetHandlers.dnsLookup(params);
+                        break;
+                    case "url_metadata":
+                        result = NetHandlers.urlMetadata(params);
+                        break;
+                    case "qr_generate":
+                        result = NetHandlers.qrGenerate(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "pdf_extract_text":
+                        result = NetHandlers.pdfExtractText(params, ctx.root, ctx.outsideSandbox);
+                        break;
+                    case "webhook_notify":
+                        result = NetHandlers.webhookNotify(params);
                         break;
                     default:
                         result = BuiltinToolResult.fail("未知内置工具: " + name);
@@ -401,24 +509,15 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
         return BuiltinToolResult.ok(sb.toString());
     }
 
-    /** web_fetch：抓取公网 URL 并提取正文文本；拒绝内网/环回地址（SSRF 防护） */
+    /** web_fetch：抓取公网 URL 并提取正文文本；拒绝内网/环回地址（SSRF 防护，与 NetHandlers 共用一套检查） */
     private BuiltinToolResult webFetch(Map<String, Object> params) throws Exception {
         String url = str(params.get("url"));
         if (url.isEmpty()) {
             return BuiltinToolResult.fail("url 不能为空");
         }
-        URI uri = new URI(url);
-        String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase() : "";
-        if (!"http".equals(scheme) && !"https".equals(scheme)) {
-            return BuiltinToolResult.fail("仅支持 http/https 地址");
-        }
-        // SSRF 防护：解析出的所有地址都不得是环回/内网/链路本地
-        InetAddress[] addrs = InetAddress.getAllByName(uri.getHost());
-        for (InetAddress addr : addrs) {
-            if (addr.isLoopbackAddress() || addr.isSiteLocalAddress()
-                    || addr.isLinkLocalAddress() || addr.isAnyLocalAddress()) {
-                return BuiltinToolResult.fail("不允许访问内网/本机地址: " + addr.getHostAddress());
-            }
+        String guard = NetHandlers.publicUrlGuard(url);
+        if (guard != null) {
+            return BuiltinToolResult.fail(guard);
         }
         int maxLen = Math.min(intOf(params.get("max_length"), 8000), 20_000);
 
@@ -498,16 +597,10 @@ public class BuiltinToolServiceImpl implements BuiltinToolService {
     /**
      * 路径解析。沙箱模式：规范化后必须仍在沙箱根内，拒绝绝对路径与 .. 穿越；
      * 沙箱外模式（用户已授权）：Path.resolve 天然支持绝对参数，直接返回规范化结果。
+     * 唯一实现在 {@link FileHandlers#resolveSafe}（handler 包内文件类工具共用），此处委托保持旧调用点不变。
      */
     private Path resolveSafe(Path root, String rel, boolean outsideSandbox) {
-        if (rel == null || rel.trim().isEmpty()) {
-            throw new IllegalArgumentException("path 不能为空");
-        }
-        Path resolved = root.resolve(rel).normalize();
-        if (!outsideSandbox && !resolved.startsWith(root)) {
-            throw new IllegalArgumentException("路径越界，只允许访问会话沙箱内（可在聊天框开启「沙箱外运行」授权）: " + rel);
-        }
-        return resolved;
+        return FileHandlers.resolveSafe(root, rel, outsideSandbox);
     }
 
     /** 是否跳过该路径（.git/node_modules 等噪声目录） */

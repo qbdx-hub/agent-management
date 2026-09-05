@@ -266,7 +266,7 @@ GET /workspaces/{workspaceId}/settings
 | name / description | string | 空间基本信息 |
 | sharedWorkdir | boolean | 共享工作目录。false：每会话独立沙箱 `data/agent-workspaces/ws-{空间ID}/session-{会话ID}`；true：空间内会话共享文件区 `ws-{空间ID}/` |
 | allowOutsideSandbox | boolean | 「沙箱外运行」总闸。false 时后端拒绝所有 `outsideSandbox=true` 的工具调用（前端也隐藏授权开关，双保险） |
-| disabledTools | string[] | 空间级禁用的内置工具名单：`read_file` `write_file` `edit_file` `list_files` `search_files` `run_command` `web_search` `web_fetch`；空数组 = 全部允许 |
+| disabledTools | string[] | 空间级禁用的内置工具名单，取值为 5.10 内置工具清单中的 `name`（42 个）；空数组 = 全部允许 |
 | memberTerminalEnabled | boolean | 成员终端开关（2026-09-05 新增，V13）：空间成员是否可用移动端终端，默认 true=开放；false 时终端仅 owner/admin 可用 |
 
 ### 2.6 更新空间设置
@@ -777,6 +777,8 @@ POST /tools/{toolId}/test
 }
 ```
 
+> **内置工具（builtin）真实试运行**：对 builtin 类型工具调用本接口时，不再返回固定提示，而是与对话调用走同一 `execute()` 通道真实执行一次（固定在 `ws-{workspaceId}/session-null` 工作台沙箱内，空间禁用策略同样生效），返回真实输出；调用记录与市场统计同 API 工具口径落库。
+
 ### 5.7 注册 MCP 服务器
 
 ```
@@ -826,6 +828,67 @@ GET /tools/{toolId}/stats?startDate=2026-07-01&endDate=2026-07-14
   }
 }
 ```
+
+### 5.10 内置工具清单（builtin）
+
+平台内置 42 个 builtin 工具（V9 首发 8 个 + V14 扩容 34 个），随空间策略 `disabledTools` 统一管控，全部经 `BuiltinToolServiceImpl.execute()` 分派执行并全量审计（`tool_call_record`）。文件/命令类作用于会话沙箱（`agent.sandbox.root/ws-{workspaceId}/session-{sessionId}`，空间开启共享工作目录则为 `ws-{workspaceId}/`）；网络类统一 SSRF 防护（仅 http/https、拒绝环回/内网/链路本地地址）、超时与输出截断。
+
+**文件与命令（operate，沙箱内）**
+
+| name | 工具 | 说明 |
+|---|---|---|
+| read_file | 读取文件 | 按行读文本，offset/limit 分段 |
+| write_file | 写入文件 | 创建/覆盖，自动建父目录 |
+| edit_file | 编辑文件 | old_string 精确替换（须唯一或 replace_all） |
+| list_files | 列举文件 | glob 模式列举 |
+| search_files | 搜索文件 | 内容 grep，支持正则 |
+| run_command | 执行命令 | shell 命令，超时/输出上限 |
+| create_dir | 创建目录 | mkdir -p 语义 |
+| delete_path | 删除路径 | 递归删除，拒绝沙箱根 |
+| move_path | 移动/重命名 | 目标已存在拒绝 |
+| copy_path | 复制路径 | 递归复制，单文件 ≤10MB |
+| file_info | 文件信息 | 大小/行数/修改时间/图片尺寸 |
+| zip_pack | 打包 zip | ≤5000 项，单文件 ≤10MB |
+| zip_unpack | 解压 zip | zip-slip 防护 + 总量 ≤50MB |
+| qr_generate | 二维码生成 | 文本/URL → 二维码 SVG 存沙箱（zxing） |
+
+**联网（search / perceive / notify）**
+
+| name | 工具 | 说明 |
+|---|---|---|
+| web_search | 网页搜索 | 必应 RSS，免密钥 |
+| web_fetch | 网页抓取 | 网页转文本 / JSON / 纯文本 |
+| http_request | HTTP 请求 | GET/POST/PUT/DELETE/PATCH + 自定义头体 |
+| weather_forecast | 天气预报 | open-meteo 免密钥，当前 + 未来 ≤7 天 |
+| ip_lookup | IP 归属地 | ip-api.com 中文；空 ip 查出口 IP |
+| dns_lookup | 域名解析 | 全部 A/AAAA 记录 |
+| url_metadata | 网页元信息 | title / description / og 标签 |
+| pdf_extract_text | PDF 提取 | pdfbox 按页提取（扫描件无文本会提示） |
+| webhook_notify | Webhook 推送 | POST JSON 到企微/钉钉/飞书机器人 |
+
+**计算与转换（compute，纯本地零外部依赖）**
+
+| name | 工具 | 说明 |
+|---|---|---|
+| calculator | 计算器 | 递归下降解析（非 ScriptEngine，防注入）：`+ - * / % ^` 括号、sqrt/sin/cos/tan/abs/round/floor/ceil/log/ln/pow/min/max、pi/e；round 支持第二参数小数位 |
+| unit_convert | 单位换算 | 长度/重量/面积/体积/速度/数据大小/温度 |
+| number_base_convert | 进制转换 | 2-36 进制互转，大数支持 |
+| random_generator | 随机生成 | 随机数 / UUID / 强密码（类别保证 + 洗牌） |
+| loan_calc | 房贷计算 | 等额本息 / 等额本金 |
+| color_convert | 颜色转换 | HEX ↔ RGB ↔ HSL |
+| current_time | 当前时间 | 时区、星期、Unix 时间戳 |
+| date_calculator | 日期计算 | 加减天数 / 工作日 / 两日期差 |
+| timestamp_convert | 时间戳转换 | 秒/毫秒自动识别双向转换 |
+| cron_next | Cron 解析 | Spring CronExpression 未来 N 次执行 |
+| text_stats | 字数统计 | 字符/中文/单词/行数/字节 |
+| text_transform | 文本变换 | 大小写/trim/反转/去重/排序/行号 |
+| regex_tool | 正则工具 | 匹配提取（含捕获组）/校验/替换 |
+| base64_codec | Base64 | 标准 / URL-safe 编解码 |
+| hash_calculator | 哈希计算 | MD5/SHA-1/SHA-256，文本或沙箱文件 |
+| url_codec | URL 编解码 | UTF-8 百分号编解码 |
+| json_tool | JSON 工具 | 校验/格式化/压缩/点路径取值 |
+| csv_json_convert | CSV↔JSON | 引号转义、自定义分隔符 |
+| text_diff | 文本对比 | 行级 LCS 差异 |
 
 ---
 

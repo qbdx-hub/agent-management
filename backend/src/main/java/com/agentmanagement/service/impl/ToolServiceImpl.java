@@ -14,6 +14,8 @@ import com.agentmanagement.mapper.ToolCallRecordMapper;
 import com.agentmanagement.mapper.ToolMapper;
 import com.agentmanagement.security.SecurityUtils;
 import com.agentmanagement.service.ToolService;
+import com.agentmanagement.service.builtin.BuiltinToolResult;
+import com.agentmanagement.service.builtin.BuiltinToolService;
 import com.agentmanagement.vo.ToolStatsVO;
 import com.agentmanagement.vo.ToolSummaryVO;
 import com.agentmanagement.vo.ToolTestResultVO;
@@ -30,6 +32,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -57,6 +60,11 @@ public class ToolServiceImpl extends ServiceImpl<ToolMapper, Tool> implements To
 
     @Autowired
     private AgentMapper agentMapper;
+
+    /** 内置工具执行器（@Lazy 断环：BuiltinToolServiceImpl 反向依赖本类回填统计） */
+    @Autowired
+    @Lazy
+    private BuiltinToolService builtinToolService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -196,12 +204,17 @@ public class ToolServiceImpl extends ServiceImpl<ToolMapper, Tool> implements To
 
         if (!"api".equalsIgnoreCase(tool.getType())) {
             if ("builtin".equalsIgnoreCase(tool.getType())) {
-                // 内置工具在服务器沙箱内执行，无远端端点可测
+                // 内置工具真实试运行：与对话调用同一 execute()（空间禁用策略同样生效），
+                // 固定沙箱内执行（session=null → ws-{id}/session-null 工作台目录），调用记录与统计同 API 工具
+                long startMs = System.currentTimeMillis();
+                BuiltinToolResult r = builtinToolService.execute(tool, parameters, agentId, sessionId, workspaceId, false);
+                int latencyMs = (int) (System.currentTimeMillis() - startMs);
                 ToolTestResultVO info = new ToolTestResultVO();
-                info.setSuccess(true);
-                info.setResponseStatus(200);
-                info.setLatencyMs(0);
-                info.setMappedOutput("内置工具（builtin）：在服务器会话沙箱内执行，无需连通性测试；绑定到 Agent 后由模型在对话中调用");
+                info.setSuccess(r.isSuccess());
+                info.setLatencyMs(latencyMs);
+                info.setResponseStatus(r.isSuccess() ? 200 : 500);
+                info.setResponseBody(r.isSuccess() ? r.getOutput() : r.getErrorMessage());
+                info.setMappedOutput(r.getOutput());
                 return info;
             }
             throw new BusinessException(ResultCode.PARAM_ERROR,
